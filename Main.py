@@ -1,8 +1,21 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from PIL import Image as im
 
-import Constants as const
-import ImageSupport as imsup
+ewf_length = 1.97e-12
+
+# ---------------------------------------------------------------
+
+def scale_image(img, old_min, old_max, new_min=0, new_max=255):
+    img_scaled = (img - old_min) * (new_max - new_min) / (old_max - old_min) + new_min
+    return img_scaled
+
+# ---------------------------------------------------------------
+
+def save_image(img, f_path, old_min, old_max):
+    img_scaled = scale_image(img, old_min, old_max, 0, 255)
+    img_to_save = im.fromarray(img_scaled.astype(np.uint8))
+    img_to_save.save(f_path)
 
 # ---------------------------------------------------------------
 
@@ -62,17 +75,15 @@ def calc_ctf_2d(img_dim, px_dim, ewf_lambda, defocus, Cs=0.0, df_spread=0.0, con
     k_squared = kx ** 2 + ky ** 2
 
     aberr_fun = df_coeff * k_squared + Cs_coeff * (k_squared ** 2)
-    pctf = np.sin(aberr_fun)
+    pctf = -np.sin(aberr_fun)
 
-    spat_env_fun = np.exp(-((np.pi * conv_angle * kx) ** 2) * (defocus + Cs * ewf_lambda ** 2 * k_squared) ** 2)
+    spat_env_fun = np.exp(-(k_squared * (np.pi * conv_angle) ** 2) * (defocus + Cs * ewf_lambda ** 2 * k_squared) ** 2)
     temp_env_fun = np.exp(-(0.5 * np.pi * ewf_lambda * df_spread * k_squared) ** 2)
 
     pctf *= spat_env_fun
     pctf *= temp_env_fun
 
-    pctf_img = imsup.ImageWithBuffer(img_dim, img_dim)
-    pctf_img.LoadAmpData(pctf)
-    imsup.SaveAmpImage(pctf_img, '{0}.png'.format(fname))
+    save_image(pctf, '{0}.png'.format(fname), -1, 1)
 
     print('Done')
     return pctf
@@ -83,8 +94,8 @@ def save_range_of_ctf_1d_images(img_dim, px_dim, ewf_lambda, df_pars, Cs=0.0, df
 
     df_min, df_max, df_step = df_pars
     df_values = np.arange(df_min, df_max, df_step)
-    for df, idx in zip(df_values, range(df_values.shape[0])):
-        fn = '{0}_{1}'.format(fname, idx + 1)
+    for df in df_values:
+        fn = '{0}_{1:.0f}nm'.format(fname, df * 1e9)
         calc_ctf_1d(img_dim, px_dim, ewf_lambda, df, Cs, df_spread, conv_angle, fn)
 
     print('All done')
@@ -97,8 +108,8 @@ def save_range_of_ctf_2d_images(img_dim, px_dim, ewf_lambda, df_pars, Cs=0.0, df
 
     df_min, df_max, df_step = df_pars
     df_values = np.arange(df_min, df_max, df_step)
-    for df, idx in zip(df_values, range(df_values.shape[0])):
-        fn = '{0}_{1}'.format(fname, idx+1)
+    for df in df_values:
+        fn = '{0}_{1:.0f}nm'.format(fname, df * 1e9)
         calc_ctf_2d(img_dim, px_dim, ewf_lambda, df, Cs, df_spread, conv_angle, fn)
 
     print('All done')
@@ -106,8 +117,8 @@ def save_range_of_ctf_2d_images(img_dim, px_dim, ewf_lambda, df_pars, Cs=0.0, df
 
 # ---------------------------------------------------------------
 
-# calc_ctf_1d(1024, 40e-12, const.ewfLambda, defocus=0e-9, Cs=0.6e-3, df_spread=4e-9, conv_angle=0.25e-3)
-save_range_of_ctf_1d_images(1024, 40e-12, const.ewfLambda, [0e-9, 1050e-9, 50e-9], Cs=0.6e-3, df_spread=4e-9, conv_angle=0.25e-3)
+# calc_ctf_1d(1024, 40e-12, ewf_length, defocus=0e-9, Cs=0.6e-3, df_spread=4e-9, conv_angle=0.25e-3)
+save_range_of_ctf_1d_images(1024, 40e-12, ewf_length, [0e-9, 1050e-9, 50e-9], Cs=0.6e-3, df_spread=4e-9, conv_angle=0.25e-3)
 
-# calc_ctf_2d(1024, 40e-12, const.ewfLambda, defocus=0e-9, Cs=0.6e-3, df_spread=4e-9, conv_angle=0.25e-3)
-# save_range_of_ctf_2d_images(1024, 40e-12, const.ewfLambda, [0e-9, 1050e-9, 50e-9], Cs=0.6e-3, df_spread=4e-9, conv_angle=0.25e-3)
+# calc_ctf_2d(1024, 40e-12, ewf_length, defocus=0e-9, Cs=0.6e-3, df_spread=4e-9, conv_angle=0.25e-3)
+# save_range_of_ctf_2d_images(1024, 40e-12, ewf_length, [0e-9, 1050e-9, 50e-9], Cs=0.6e-3, df_spread=4e-9, conv_angle=0.25e-3)

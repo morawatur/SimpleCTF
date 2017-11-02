@@ -117,8 +117,46 @@ def save_range_of_ctf_2d_images(img_dim, px_dim, ewf_lambda, df_pars, Cs=0.0, df
 
 # ---------------------------------------------------------------
 
+def calc_ctf_2d_PyEWRec(img_dim, px_dim, ewf_lambda, defocus, Cs=0.0, df_spread=0.0, conv_angle=0.0, fname='pctf2d'):
+    import ImageSupport as imsup
+
+    df_coeff = np.pi * ewf_lambda * defocus
+    Cs_coeff = 0.5 * np.pi * (ewf_lambda ** 3) * Cs
+
+    rec_px_dim = 1.0 / (img_dim * px_dim)
+    rec_orig = -1.0 / (2.0 * px_dim)
+
+    x, y = np.mgrid[0:img_dim:1, 0:img_dim:1]
+    kx = rec_orig + x * rec_px_dim
+    ky = rec_orig + y * rec_px_dim
+    k_squared = kx ** 2 + ky ** 2
+
+    aberr_fun = df_coeff * k_squared + Cs_coeff * (k_squared ** 2)
+    # pctf = -np.sin(aberr_fun)
+
+    spat_env_fun = np.exp(-(k_squared * (np.pi * conv_angle) ** 2) * (defocus + Cs * ewf_lambda ** 2 * k_squared) ** 2)
+    temp_env_fun = np.exp(-(0.5 * np.pi * ewf_lambda * df_spread * k_squared) ** 2)
+
+    aberr_fun *= -1
+    env_funs = spat_env_fun * temp_env_fun
+    env_funs[env_funs == 0] = 1
+
+    ctf_wf = imsup.Image(img_dim, img_dim, imsup.Image.cmp['CAP'], imsup.Image.mem['CPU'])
+    # ctf_wf.amPh.am = np.copy(env_funs)
+    ctf_wf.amPh.am = np.ones((img_dim, img_dim), dtype=np.float32)
+    ctf_wf.amPh.ph = np.copy(aberr_fun)
+
+    # pctf *= spat_env_fun
+    # pctf *= temp_env_fun
+
+    # save_image(pctf, '{0}.png'.format(fname), -1, 1)
+    # print('Done')
+    return ctf_wf
+
+# ---------------------------------------------------------------
+
 # calc_ctf_1d(1024, 40e-12, ewf_length, defocus=0e-9, Cs=0.6e-3, df_spread=4e-9, conv_angle=0.25e-3)
-save_range_of_ctf_1d_images(1024, 40e-12, ewf_length, [0e-9, 1050e-9, 50e-9], Cs=0.6e-3, df_spread=4e-9, conv_angle=0.25e-3)
+save_range_of_ctf_1d_images(1024, 40e-12, ewf_length, [250e-9, 1050e-9, 50e-9], Cs=0.6e-3, df_spread=4e-9, conv_angle=0.25e-3)
 
 # calc_ctf_2d(1024, 40e-12, ewf_length, defocus=0e-9, Cs=0.6e-3, df_spread=4e-9, conv_angle=0.25e-3)
 # save_range_of_ctf_2d_images(1024, 40e-12, ewf_length, [0e-9, 1050e-9, 50e-9], Cs=0.6e-3, df_spread=4e-9, conv_angle=0.25e-3)

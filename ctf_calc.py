@@ -1,20 +1,27 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from PIL import Image as im
+from PIL import ImageFont
+from PIL import ImageDraw
 
 ewf_length = 1.97e-12
 
 # ---------------------------------------------------------------
 
-def scale_image(img, old_min, old_max, new_min=0, new_max=255):
+def scale_image(img, old_min, old_max, new_min=0.0, new_max=255.0):
     img_scaled = (img - old_min) * (new_max - new_min) / (old_max - old_min) + new_min
     return img_scaled
 
 # ---------------------------------------------------------------
 
-def save_image(img, f_path, old_min, old_max):
-    img_scaled = scale_image(img, old_min, old_max, 0, 255)
+def save_image(img, f_path, old_min, old_max, annot=''):
+    img_scaled = scale_image(img, old_min, old_max, 0.0, 255.0)
     img_to_save = im.fromarray(img_scaled.astype(np.uint8))
+
+    draw = ImageDraw.Draw(img_to_save)
+    fnt = ImageFont.truetype('calibri.ttf', 40)
+    draw.text((750, 70), annot, font=fnt, fill='white')
+
     img_to_save.save(f_path)
 
 # ---------------------------------------------------------------
@@ -51,6 +58,8 @@ def calc_ctf_1d(img_dim, px_dim, ewf_lambda, defocus, Cs=0.0, df_spread=0.0, con
     plt.xlabel('Spatial frequency k [nm-1]')
     plt.ylabel('Contrast')
     plt.annotate('df = {0:.0f} nm'.format(defocus * 1e9), xy=(0, 0), xytext=(9.5, 0.9), fontsize=16)
+    plt.annotate('information\nlimit', xy=(9.5, -0.02), xytext=(9.5, -0.4), fontsize=16, horizontalalignment='center',
+                 arrowprops=dict(facecolor='black', shrink=0.06))
     # plt.legend()
     fig.savefig('{0}.png'.format(fname))
     plt.close(fig)
@@ -83,10 +92,11 @@ def calc_ctf_2d(img_dim, px_dim, ewf_lambda, defocus, Cs=0.0, df_spread=0.0, con
     pctf *= spat_env_fun
     pctf *= temp_env_fun
 
-    save_image(pctf, '{0}.png'.format(fname), -1, 1)
+    # save_image(pctf, '{0}.png'.format(fname), -1, 1, annot='df = {0:.0f} nm'.format(defocus * 1e9))
 
     print('Done')
-    return pctf
+    return aberr_fun
+    # return pctf
 
 # ---------------------------------------------------------------
 
@@ -155,8 +165,8 @@ def calc_ctf_2d_PyEWRec(img_dim, px_dim, ewf_lambda, defocus, Cs=0.0, df_spread=
 
 # ---------------------------------------------------------------
 
-# calc_ctf_1d(1024, 40e-12, ewf_length, defocus=0e-9, Cs=0.6e-3, df_spread=4e-9, conv_angle=0.25e-3)
-save_range_of_ctf_1d_images(1024, 40e-12, ewf_length, [250e-9, 1050e-9, 50e-9], Cs=0.6e-3, df_spread=4e-9, conv_angle=0.25e-3)
+# calc_ctf_1d(1024, 40e-12, ewf_length, defocus=20e-9, Cs=0.6e-3, df_spread=4e-9, conv_angle=0.25e-3)
+# save_range_of_ctf_1d_images(1024, 40e-12, ewf_length, [250e-9, 1040e-9, 50e-9], Cs=0.6e-3, df_spread=4e-9, conv_angle=0.25e-3)
 
-# calc_ctf_2d(1024, 40e-12, ewf_length, defocus=0e-9, Cs=0.6e-3, df_spread=4e-9, conv_angle=0.25e-3)
-# save_range_of_ctf_2d_images(1024, 40e-12, ewf_length, [0e-9, 1050e-9, 50e-9], Cs=0.6e-3, df_spread=4e-9, conv_angle=0.25e-3)
+# calc_ctf_2d(1024, 40e-12, ewf_length, defocus=20e-9, Cs=0.6e-3, df_spread=4e-9, conv_angle=0.25e-3)
+# save_range_of_ctf_2d_images(1024, 40e-12, ewf_length, [250e-9, 1040e-9, 50e-9], Cs=0.6e-3, df_spread=4e-9, conv_angle=0.25e-3)

@@ -92,10 +92,12 @@ def calc_ctf_2d(img_dim, px_dim, ewf_lambda, defocus, Cs=0.0, df_spread=0.0, con
     pctf *= spat_env_fun
     pctf *= temp_env_fun
 
+    env_funs = spat_env_fun * temp_env_fun
+
     # save_image(pctf, '{0}.png'.format(fname), -1, 1, annot='df = {0:.0f} nm'.format(defocus * 1e9))
 
     print('Done')
-    return aberr_fun
+    return env_funs, aberr_fun
     # return pctf
 
 # ---------------------------------------------------------------

@@ -45,9 +45,9 @@ def simulate_image_for_defocus(img, px_dim, defocus):
     img_fft_amp = fft2diff(img_fft_amp)
     img_fft_phase = fft2diff(img_fft_phase)
 
-    ctf_amp, ctf_phase = ctf_calc.calc_ctf_2d(img_dim, px_dim, ctf_calc.ewf_length, defocus, Cs=0.0e-3, df_spread=4e-9, conv_angle=0.25e-3)
-    ctf_calc.save_image(ctf_amp, 'ctf_amp.png', np.min(ctf_amp), np.max(ctf_amp))
-    ctf_calc.save_image(ctf_phase, 'ctf_phase.png', np.min(ctf_phase), np.max(ctf_phase))
+    ctf_amp, ctf_phase = ctf_calc.calc_ctf_2d(img_dim, px_dim, ctf_calc.ewf_length, defocus, Cs=0.6e-3, df_spread=4e-9, conv_angle=0.25e-3)
+    # ctf_calc.save_image(ctf_amp, 'ctf_amp.png', np.min(ctf_amp), np.max(ctf_amp))
+    # ctf_calc.save_image(ctf_phase, 'ctf_phase.png', np.min(ctf_phase), np.max(ctf_phase))
 
     sim_fft_amp = img_fft_amp * ctf_amp
     sim_fft_phase = img_fft_phase + ctf_phase
@@ -69,7 +69,10 @@ phases = []
 am_lims = [1e9, 0]
 ph_lims = [0, 0]
 
-df_values = np.arange(0.0, 1005e-9, 50e-9)
+df_values1 = np.arange(0.0, 105e-9, 10e-9)
+df_values2 = np.arange(120e-9, 210e-9, 20e-9)
+df_values3 = np.arange(250e-9, 1040e-9, 50e-9)
+df_values = np.concatenate((df_values1, df_values2, df_values3))
 
 for df in df_values:
     amplitude, phase = simulate_image_for_defocus(img_data, px_sz, df)
@@ -83,8 +86,8 @@ for df in df_values:
     if ph_max > ph_lims[1]: ph_lims[1] = ph_max
 
 for df, idx in zip(df_values, range(df_values.shape[0])):
-    am_fn = 'am_{0:.0f}nm.png'.format(df * 1e9)
-    ph_fn = 'ph_{0:.0f}nm.png'.format(df * 1e9)
+    am_fn = 'df_sim_Cs/am_{0:.0f}nm.png'.format(df * 1e9)
+    ph_fn = 'df_sim_Cs/ph_{0:.0f}nm.png'.format(df * 1e9)
     ctf_calc.save_image(amplitudes[idx], am_fn, am_lims[0], am_lims[1])
     ctf_calc.save_image(phases[idx], ph_fn, ph_lims[0], ph_lims[1])
     # img_sim = simulate_image_for_defocus_PyEWRec(img_data, px_sz, df)

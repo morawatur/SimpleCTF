@@ -60,7 +60,7 @@ def simulate_image_for_defocus(img, px_dim, defocus):
 
 # ---------------------------------------------------------------
 
-img_data, px_dims = dm3.ReadDm3File('lat5.dm3')
+img_data, px_dims = dm3.ReadDm3File('lat7.dm3')
 px_sz = 40e-12
 
 amplitudes = []
@@ -86,8 +86,8 @@ for df in df_values:
     if ph_max > ph_lims[1]: ph_lims[1] = ph_max
 
 for df, idx in zip(df_values, range(df_values.shape[0])):
-    am_fn = 'df_sim_Cs/am_{0:.0f}nm.png'.format(df * 1e9)
-    ph_fn = 'df_sim_Cs/ph_{0:.0f}nm.png'.format(df * 1e9)
+    am_fn = 'vlat_sim_Cs/am_{0:.0f}nm.png'.format(df * 1e9)
+    ph_fn = 'vlat_sim_Cs/ph_{0:.0f}nm.png'.format(df * 1e9)
     ctf_calc.save_image(amplitudes[idx], am_fn, am_lims[0], am_lims[1])
     ctf_calc.save_image(phases[idx], ph_fn, ph_lims[0], ph_lims[1])
     # img_sim = simulate_image_for_defocus_PyEWRec(img_data, px_sz, df)

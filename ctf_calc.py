@@ -58,7 +58,7 @@ def calc_ctf_1d(img_dim, px_dim, ewf_lambda, defocus, Cs=0.0, df_spread=0.0, con
     plt.xlabel('Spatial frequency k [nm-1]', fontsize=14)
     plt.ylabel('Contrast', fontsize=14)
     plt.annotate('df = {0:.0f} nm'.format(defocus * 1e9), xy=(0, 0), xytext=(9.0, 0.9), fontsize=20)
-    plt.annotate('information\nlimit', xy=(9.5, -0.02), xytext=(9.5, -0.4), fontsize=18, horizontalalignment='center',
+    plt.annotate('information\nlimit', xy=(9.5, -0.02), xytext=(9.5, -0.4), fontsize=16, horizontalalignment='center',
                  arrowprops=dict(facecolor='black', shrink=0.06))
     # plt.legend()
     fig.savefig('{0}.png'.format(fname))
@@ -167,7 +167,7 @@ def calc_ctf_2d_PyEWRec(img_dim, px_dim, ewf_lambda, defocus, Cs=0.0, df_spread=
 
 # ---------------------------------------------------------------
 
-# calc_ctf_1d(1024, 40e-12, ewf_length, defocus=20e-9, Cs=0.6e-3, df_spread=4e-9, conv_angle=0.25e-3, fname='pctf1d_new/pctf1d_20nm_inflim')
+# calc_ctf_1d(1024, 40e-12, ewf_length, defocus=20e-9, Cs=0.6e-3, df_spread=4e-9, conv_angle=0.25e-3, fname='pctf1d_new/pctf1d_20nm_inflim2')
 # save_range_of_ctf_1d_images(1024, 40e-12, ewf_length, [250e-9, 1040e-9, 50e-9], Cs=0.6e-3, df_spread=4e-9, conv_angle=0.25e-3)
 
 # calc_ctf_2d(1024, 40e-12, ewf_length, defocus=0.0, Cs=0.6e-3, df_spread=4e-9, conv_angle=0.25e-3, fname='pctf2d_new/pctf2d_0nm_nolab')

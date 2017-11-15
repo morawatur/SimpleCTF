@@ -4,6 +4,8 @@ from PIL import Image as im
 from PIL import ImageFont
 from PIL import ImageDraw
 
+import aberrations as ab
+
 ewf_length = 1.97e-12
 
 # ---------------------------------------------------------------
@@ -71,9 +73,12 @@ def calc_ctf_1d(img_dim, px_dim, ewf_lambda, defocus, Cs=0.0, df_spread=0.0, con
 
 # ---------------------------------------------------------------
 
-def calc_ctf_2d(img_dim, px_dim, ewf_lambda, defocus, Cs=0.0, df_spread=0.0, conv_angle=0.0, fname='pctf2d'):
+def calc_ctf_2d(img_dim, px_dim, ewf_lambda, defocus, A1=0+0j, A2=0.0, Cs=0.0, df_spread=0.0, conv_angle=0.0, fname='pctf2d'):
     df_coeff = np.pi * ewf_lambda * defocus
     Cs_coeff = 0.5 * np.pi * (ewf_lambda ** 3) * Cs
+    A11_coeff = np.pi * ewf_lambda * A1.real
+    A12_coeff = 2 * np.pi * ewf_lambda * A1.imag
+    A2_coeff = (2.0 / 3.0) * np.pi * (ewf_lambda ** 2) * A2
 
     rec_px_dim = 1.0 / (img_dim * px_dim)
     rec_orig = -1.0 / (2.0 * px_dim)
@@ -82,8 +87,11 @@ def calc_ctf_2d(img_dim, px_dim, ewf_lambda, defocus, Cs=0.0, df_spread=0.0, con
     kx = rec_orig + x * rec_px_dim
     ky = rec_orig + y * rec_px_dim
     k_squared = kx ** 2 + ky ** 2
+    k_squares_diff = kx ** 2 - ky ** 2
 
     aberr_fun = df_coeff * k_squared + Cs_coeff * (k_squared ** 2)
+    aberr_fun += A11_coeff * k_squares_diff + A12_coeff * kx * ky       # two-fold astigmatism
+    aberr_fun += A2_coeff * kx * (kx ** 2 - 3 * ky ** 2)                # three-fold astigmatism
     pctf = -np.sin(aberr_fun)
 
     spat_env_fun = np.exp(-(k_squared * (np.pi * conv_angle) ** 2) * (defocus + Cs * ewf_lambda ** 2 * k_squared) ** 2)
@@ -94,7 +102,7 @@ def calc_ctf_2d(img_dim, px_dim, ewf_lambda, defocus, Cs=0.0, df_spread=0.0, con
 
     env_funs = spat_env_fun * temp_env_fun
 
-    # save_image(pctf, '{0}.png'.format(fname), -1, 1)
+    save_image(pctf, '{0}.png'.format(fname), -1, 1)
     # save_image(pctf, '{0}.png'.format(fname), -1, 1, annot='df = {0:.0f} nm'.format(defocus * 1e9))
 
     print('Done')
@@ -116,13 +124,21 @@ def save_range_of_ctf_1d_images(img_dim, px_dim, ewf_lambda, df_pars, Cs=0.0, df
 
 # ---------------------------------------------------------------
 
-def save_range_of_ctf_2d_images(img_dim, px_dim, ewf_lambda, df_pars, Cs=0.0, df_spread=0.0, conv_angle=0.0, fname='pctf2d'):
+def save_range_of_ctf_2d_images(img_dim, px_dim, ewf_lambda, df_pars, A_pars, Cs=0.0, df_spread=0.0, conv_angle=0.0, fname='pctf2d'):
 
     df_min, df_max, df_step = df_pars
     df_values = np.arange(df_min, df_max, df_step)
+
+    A_min, A_max, A_step = A_pars
+    A_am_values = np.arange(A_min, A_max, A_step)
+    nA = (A_max - A_min) // A_step + 1
+    A_ph_values = np.arange(0, 2 * np.pi, 2.0 * np.pi / nA)
+
     for df in df_values:
-        fn = 'pctf2d_new/{0}_{1:.0f}nm'.format(fname, df * 1e9)
-        calc_ctf_2d(img_dim, px_dim, ewf_lambda, df, Cs, df_spread, conv_angle, fn)
+        for A_am, A_ph, idx in zip(A_am_values, A_ph_values, range(A_am_values.shape[0])):
+            fn = 'pctf2d_with_A/{0}_{1:.0f}nm_{2:.0f}'.format(fname, df * 1e9, idx)
+            A1 = ab.polar2complex(A_am, A_ph)
+            calc_ctf_2d(img_dim, px_dim, ewf_lambda, df, A1, 0.0, Cs, df_spread, conv_angle, fn)
 
     print('All done')
     return
@@ -172,3 +188,8 @@ def calc_ctf_2d_PyEWRec(img_dim, px_dim, ewf_lambda, defocus, Cs=0.0, df_spread=
 
 # calc_ctf_2d(1024, 40e-12, ewf_length, defocus=0.0, Cs=0.6e-3, df_spread=4e-9, conv_angle=0.25e-3, fname='pctf2d_new/pctf2d_0nm_nolab')
 # save_range_of_ctf_2d_images(1024, 40e-12, ewf_length, [250e-9, 1040e-9, 50e-9], Cs=0.6e-3, df_spread=4e-9, conv_angle=0.25e-3)
+
+# calc_ctf_2d(1024, 40e-12, ewf_length, defocus=0.0, A1=1e-8+1e-8j, A2=0.0, Cs=0.6e-3, df_spread=4e-9, conv_angle=0.25e-3,
+#             fname='pctf2d_with_A/pctf2d_0nm')
+
+save_range_of_ctf_2d_images(1024, 40e-12, ewf_length, [10e-9, 15e-9, 10e-9], [0.0, 100.5e-9, 1e-9], Cs=0.6e-3, df_spread=4e-9, conv_angle=0.25e-3)

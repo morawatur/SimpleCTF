@@ -73,6 +73,17 @@ def calc_ctf_1d(img_dim, px_dim, ewf_lambda, defocus, Cs=0.0, df_spread=0.0, con
 
 # ---------------------------------------------------------------
 
+def calc_ctf_2d_dev(img_dim, px_dim, aberrations, fname='pctf2d'):
+    ctf_2d = ab.ContrastTransferFunction2D(img_dim, img_dim, px_dim, aberrations)
+    ctf_2d.calc_env_funs()
+    ctf_2d.calc_ctf()
+
+    pctf = ctf_2d.get_ctf_sine()
+    save_image(pctf, '{0}.png'.format(fname), -1, 1)
+    return ctf_2d.ctf
+
+# ---------------------------------------------------------------
+
 def calc_ctf_2d(img_dim, px_dim, ewf_lambda, defocus, A1=0+0j, A2=0.0, Cs=0.0, df_spread=0.0, conv_angle=0.0, fname='pctf2d'):
     df_coeff = np.pi * ewf_lambda * defocus
     Cs_coeff = 0.5 * np.pi * (ewf_lambda ** 3) * Cs
@@ -119,6 +130,22 @@ def save_range_of_ctf_1d_images(img_dim, px_dim, ewf_lambda, df_pars, Cs=0.0, df
         fn = 'pctf1d_new/{0}_{1:.0f}nm'.format(fname, df * 1e9)
         calc_ctf_1d(img_dim, px_dim, ewf_lambda, df, Cs, df_spread, conv_angle, fn)
 
+    print('All done')
+    return
+
+# ---------------------------------------------------------------
+
+def save_range_of_ctf_2d_images_dev(img_dim, px_dim, df_pars, aberrations, fname='pctf2d'):
+    df_min, df_max, df_step = df_pars
+    df0 = aberrations.C1
+    df_values = np.arange(df_min, df_max, df_step)
+
+    for df in df_values:
+        fn = 'pctf2d_with_A/{0}_{1:.0f}nm'.format(fname, df * 1e9)
+        aberrations.set_C1(df)
+        calc_ctf_2d_dev(img_dim, px_dim, aberrations, fn)
+
+    aberrations.set_C1(df0)
     print('All done')
     return
 
@@ -192,4 +219,15 @@ def calc_ctf_2d_PyEWRec(img_dim, px_dim, ewf_lambda, defocus, Cs=0.0, df_spread=
 # calc_ctf_2d(1024, 40e-12, ewf_length, defocus=0.0, A1=1e-8+1e-8j, A2=0.0, Cs=0.6e-3, df_spread=4e-9, conv_angle=0.25e-3,
 #             fname='pctf2d_with_A/pctf2d_0nm')
 
-save_range_of_ctf_2d_images(1024, 40e-12, ewf_length, [10e-9, 15e-9, 10e-9], [0.0, 100.5e-9, 1e-9], Cs=0.6e-3, df_spread=4e-9, conv_angle=0.25e-3)
+# save_range_of_ctf_2d_images(1024, 40e-12, ewf_length, [10e-9, 15e-9, 10e-9], [0.0, 100.5e-9, 1e-9], Cs=0.6e-3, df_spread=4e-9, conv_angle=0.25e-3)
+
+# aberrs = ab.Aberrations()
+# aberrs.set_C1(0.0)
+# aberrs.set_Cs(0.6e-3)
+# aberrs.set_A1(1e-8, np.pi)
+# # aberrs.A1.set_am_ph(1e-8, np.pi)
+# aberrs.set_df_spread(4e-9)
+# aberrs.set_conv_angle(0.25e-3)
+# # calc_ctf_2d_dev(1024, 40e-12, aberrs, 'pctf2d_with_A/pctf2d_0nm')
+#
+# save_range_of_ctf_2d_images_dev(1024, 40e-12, [0.0, 101e-9, 10e-9], aberrs, fname='pctf2d')

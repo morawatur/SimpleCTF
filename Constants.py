@@ -1,7 +1,7 @@
 nIterations = 10
 ewfLambda = 1.97e-12
 dfStepMin, dfStepMax, dfStepChange = 0.0, 100.0, 10.0       # nm
-ccWidgetDim = 768
+ccWidgetDim = 512
 gridDim = 3
 nDivForUnwarp = 8
 

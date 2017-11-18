@@ -14,8 +14,8 @@ def complex2polar(x):
 
 class PolarComplex:
     def __init__(self, am, ph):
-        self.amp = am
-        self.phs = ph
+        self.amp = np.copy(am)
+        self.phs = np.copy(ph)
         self.A1 = polar2complex(am, ph)
 
     def real(self):
@@ -87,6 +87,8 @@ class Aberrations:
         A2_cf_im = 0.0
         return A2_cf_re + 1j * A2_cf_im
 
+
+
 # ---------------------------------------------------------------
 
 class ContrastTransferFunction2D:
@@ -139,3 +141,46 @@ def calc_kx_ky(dim, px):
     kx = rec_orig + x * rec_px
     ky = rec_orig + y * rec_px
     return kx, ky
+
+# ---------------------------------------------------------------
+
+class ContrastTransferFunction1D:
+    def __init__(self, w, px, aberrs=Aberrations()):
+        self.width = w
+        self.bin = px
+        amp = np.array(w, dtype=np.float32)
+        phs = np.array(w, dtype=np.float32)
+        self.ctf = PolarComplex(amp, phs)
+        self.abset = aberrs
+        self.spat_env = 0
+        self.temp_env = 0
+        self.kx = 0
+        self.calc_spat_freqs()
+
+    def calc_spat_freqs(self):
+        rec_px_dim = 1.0 / (self.width * self.bin)
+        x = np.arange(0, self.width, 1)
+        self.kx = x * rec_px_dim
+
+    def calc_env_funs(self):
+        k_squared = self.kx ** 2
+
+        self.spat_env = np.exp(-(k_squared * (np.pi * self.abset.conv_angle) ** 2) *
+                               (self.abset.C1 + self.abset.Cs * self.abset.ewf_length ** 2 * k_squared) ** 2)
+        self.temp_env = np.exp(-(0.5 * np.pi * self.abset.ewf_length * self.abset.df_spread * k_squared) ** 2)
+
+    def calc_ctf(self):
+        k_squared = self.kx ** 2
+
+        C1_cf = self.abset.get_C1_cf()
+        Cs_cf = self.abset.get_Cs_cf()
+        A1_cf = self.abset.get_A1_cf()
+        # A2_cf = self.abset.get_A2_cf()
+
+        self.ctf.amp = self.spat_env * self.temp_env
+        self.ctf.phs = C1_cf * k_squared + Cs_cf * (k_squared ** 2)
+        self.ctf.phs += A1_cf.real * k_squared + A1_cf.imag * self.kx       # two-fold astigmatism
+        # self.ctf.phs += A2_cf.real() * (kx ** 3)                          # three-fold astigmatism
+
+    def get_ctf_sine(self):
+        return -self.ctf.amp * np.sin(self.ctf.phs)

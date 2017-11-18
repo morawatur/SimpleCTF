@@ -90,42 +90,42 @@ def simulate_image_for_defocus(img, px_dim, defocus):
 
 # ---------------------------------------------------------------
 
-img_data, px_dims = dm3.ReadDm3File('lat6.dm3')
-px_sz = 40e-12
-
-amplitudes = []
-phases = []
-
-am_lims = [1e9, 0]
-ph_lims = [0, 0]
-
-# df_values1 = np.arange(0.0, 105e-9, 10e-9)
-# df_values2 = np.arange(120e-9, 210e-9, 20e-9)
-# df_values3 = np.arange(250e-9, 1040e-9, 50e-9)
-# df_values = np.concatenate((df_values1, df_values2, df_values3))
-df_values = np.arange(-300e-9, 305e-9, 10e-9)
-
-for df, idx in zip(df_values, range(df_values.shape[0])):
-    print(df * 1e9)
-    amplitude, phase = simulate_image_for_defocus_dev(img_data, px_sz, df, idx+1)
-    amplitudes.append(amplitude)
-    phases.append(phase)
-    am_min, am_max = np.min(amplitude), np.max(amplitude)
-    ph_min, ph_max = np.min(phase), np.max(phase)
-    if am_min < am_lims[0]: am_lims[0] = am_min
-    if am_max > am_lims[1]: am_lims[1] = am_max
-    if ph_min < ph_lims[0]: ph_lims[0] = ph_min
-    if ph_max > ph_lims[1]: ph_lims[1] = ph_max
-
-for df, idx in zip(df_values, range(df_values.shape[0])):
-    am_fn = 'A1_sim/am_{0}.png'.format(idx+1)
-    ph_fn = 'A1_sim/ph_{0}.png'.format(idx+1)
-    # am_fn = 'A1_sim/am_{0:.0f}nm.png'.format(df * 1e9)
-    # ph_fn = 'A1_sim/ph_{0:.0f}nm.png'.format(df * 1e9)
-    ctf_calc.save_image(amplitudes[idx], am_fn, am_lims[0], am_lims[1])
-    ctf_calc.save_image(phases[idx], ph_fn, ph_lims[0], ph_lims[1])
-    # img_sim = simulate_image_for_defocus_PyEWRec(img_data, px_sz, df)
-    # imsup.SaveAmpImage(img_sim, am_fn)
-    # imsup.SavePhaseImage(img_sim, ph_fn)
+# img_data, px_dims = dm3.ReadDm3File('lat6.dm3')
+# px_sz = 40e-12
+#
+# amplitudes = []
+# phases = []
+#
+# am_lims = [1e9, 0]
+# ph_lims = [0, 0]
+#
+# # df_values1 = np.arange(0.0, 105e-9, 10e-9)
+# # df_values2 = np.arange(120e-9, 210e-9, 20e-9)
+# # df_values3 = np.arange(250e-9, 1040e-9, 50e-9)
+# # df_values = np.concatenate((df_values1, df_values2, df_values3))
+# df_values = np.arange(-300e-9, 305e-9, 10e-9)
+#
+# for df, idx in zip(df_values, range(df_values.shape[0])):
+#     print(df * 1e9)
+#     amplitude, phase = simulate_image_for_defocus_dev(img_data, px_sz, df, idx+1)
+#     amplitudes.append(amplitude)
+#     phases.append(phase)
+#     am_min, am_max = np.min(amplitude), np.max(amplitude)
+#     ph_min, ph_max = np.min(phase), np.max(phase)
+#     if am_min < am_lims[0]: am_lims[0] = am_min
+#     if am_max > am_lims[1]: am_lims[1] = am_max
+#     if ph_min < ph_lims[0]: ph_lims[0] = ph_min
+#     if ph_max > ph_lims[1]: ph_lims[1] = ph_max
+#
+# for df, idx in zip(df_values, range(df_values.shape[0])):
+#     am_fn = 'A1_sim/am_{0}.png'.format(idx+1)
+#     ph_fn = 'A1_sim/ph_{0}.png'.format(idx+1)
+#     # am_fn = 'A1_sim/am_{0:.0f}nm.png'.format(df * 1e9)
+#     # ph_fn = 'A1_sim/ph_{0:.0f}nm.png'.format(df * 1e9)
+#     ctf_calc.save_image(amplitudes[idx], am_fn, am_lims[0], am_lims[1])
+#     ctf_calc.save_image(phases[idx], ph_fn, ph_lims[0], ph_lims[1])
+#     # img_sim = simulate_image_for_defocus_PyEWRec(img_data, px_sz, df)
+#     # imsup.SaveAmpImage(img_sim, am_fn)
+#     # imsup.SavePhaseImage(img_sim, ph_fn)
 
 

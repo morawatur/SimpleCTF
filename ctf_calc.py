@@ -28,6 +28,28 @@ def save_image(img, f_path, old_min, old_max, annot=''):
 
 # ---------------------------------------------------------------
 
+def save_ctf_plot(ctf_1d, fname='ctf_1d'):
+    kx = ctf_1d.kx * 1e-9
+    pctf_1d = ctf_1d.get_ctf_sine()
+
+    fig, ax = plt.subplots(figsize=(10, 8))
+    ax.plot(kx, pctf_1d, 'r', label='PCTF')
+    ax.plot(kx, ctf_1d.spat_env, 'g', label='Spatial envelope')
+    ax.plot(kx, ctf_1d.temp_env, 'b', label='Temporal envelope')
+    legend = ax.legend(loc='lower right', fontsize=12)
+
+    plt.xlim([0, kx[-1]])
+    plt.ylim([-1.1, 1.1])
+    plt.axhline(0, color='k', lw=1.0)
+    plt.xlabel('Spatial frequency k [nm-1]', fontsize=12)
+    plt.ylabel('Contrast', fontsize=12)
+    # plt.annotate('df = {0:.0f} nm'.format(ctf_1d.abset.C1 * 1e9), xy=(0, 0), xytext=(9.0, 0.9), fontsize=16)
+
+    fig.savefig('{0}.png'.format(fname))
+    plt.close(fig)
+
+# ---------------------------------------------------------------
+
 def calc_ctf_1d(img_dim, px_dim, ewf_lambda, defocus, Cs=0.0, df_spread=0.0, conv_angle=0.0, fname='pctf1d'):
     df_coeff = np.pi * ewf_lambda * defocus
     Cs_coeff = 0.5 * np.pi * (ewf_lambda ** 3) * Cs
@@ -73,13 +95,24 @@ def calc_ctf_1d(img_dim, px_dim, ewf_lambda, defocus, Cs=0.0, df_spread=0.0, con
 
 # ---------------------------------------------------------------
 
+def calc_ctf_1d_dev(width, bin_dim, aberrations, fname='pctf1d'):
+    ctf_1d = ab.ContrastTransferFunction1D(width, bin_dim, aberrations)
+    ctf_1d.calc_env_funs()
+    ctf_1d.calc_ctf()
+
+    # pctf_1d = ctf_1d.get_ctf_sine()
+    save_ctf_plot(ctf_1d, fname)
+    return ctf_1d
+
+# ---------------------------------------------------------------
+
 def calc_ctf_2d_dev(img_dim, px_dim, aberrations, fname='pctf2d'):
     ctf_2d = ab.ContrastTransferFunction2D(img_dim, img_dim, px_dim, aberrations)
     ctf_2d.calc_env_funs()
     ctf_2d.calc_ctf()
 
-    pctf = ctf_2d.get_ctf_sine()
-    save_image(pctf, '{0}.png'.format(fname), -1, 1)
+    pctf_2d = ctf_2d.get_ctf_sine()
+    save_image(pctf_2d, '{0}.png'.format(fname), -1, 1)
     return ctf_2d.ctf
 
 # ---------------------------------------------------------------
@@ -210,24 +243,53 @@ def calc_ctf_2d_PyEWRec(img_dim, px_dim, ewf_lambda, defocus, Cs=0.0, df_spread=
 
 # ---------------------------------------------------------------
 
+def get_pctf_zero_crossings(ctf):
+    pctf_zeros = []
+    pctf = ctf.get_ctf_sine()
+
+    for i in range(0, pctf.shape[0] - 1):
+        if pctf[i] > 0 > pctf[i + 1] or pctf[i] < 0 < pctf[i + 1]:
+            pctf_zeros.append(i)
+            # pctf_zeros.append(ctf.kx[i])
+
+    return pctf_zeros
+
+# ---------------------------------------------------------------
+
 # calc_ctf_1d(1024, 40e-12, ewf_length, defocus=20e-9, Cs=0.6e-3, df_spread=4e-9, conv_angle=0.25e-3, fname='pctf1d_new/pctf1d_20nm_inflim2')
 # save_range_of_ctf_1d_images(1024, 40e-12, ewf_length, [250e-9, 1040e-9, 50e-9], Cs=0.6e-3, df_spread=4e-9, conv_angle=0.25e-3)
 
 # calc_ctf_2d(1024, 40e-12, ewf_length, defocus=0.0, Cs=0.6e-3, df_spread=4e-9, conv_angle=0.25e-3, fname='pctf2d_new/pctf2d_0nm_nolab')
 # save_range_of_ctf_2d_images(1024, 40e-12, ewf_length, [250e-9, 1040e-9, 50e-9], Cs=0.6e-3, df_spread=4e-9, conv_angle=0.25e-3)
 
-# calc_ctf_2d(1024, 40e-12, ewf_length, defocus=0.0, A1=1e-8+1e-8j, A2=0.0, Cs=0.6e-3, df_spread=4e-9, conv_angle=0.25e-3,
-#             fname='pctf2d_with_A/pctf2d_0nm')
-
 # save_range_of_ctf_2d_images(1024, 40e-12, ewf_length, [10e-9, 15e-9, 10e-9], [0.0, 100.5e-9, 1e-9], Cs=0.6e-3, df_spread=4e-9, conv_angle=0.25e-3)
 
 # aberrs = ab.Aberrations()
-# aberrs.set_C1(0.0)
-# aberrs.set_Cs(0.6e-3)
-# aberrs.set_A1(1e-8, np.pi)
+# aberrs.set_C1(20e-9)
+# aberrs.set_Cs(0.0)
+# aberrs.set_A1(1e-9, np.pi)
 # # aberrs.A1.set_am_ph(1e-8, np.pi)
-# aberrs.set_df_spread(4e-9)
-# aberrs.set_conv_angle(0.25e-3)
-# # calc_ctf_2d_dev(1024, 40e-12, aberrs, 'pctf2d_with_A/pctf2d_0nm')
+# aberrs.set_df_spread(0.0)
+# aberrs.set_conv_angle(0.0)
 #
-# save_range_of_ctf_2d_images_dev(1024, 40e-12, [0.0, 101e-9, 10e-9], aberrs, fname='pctf2d')
+# # ctf = calc_ctf_2d_dev(1024, 40e-12, aberrs, 'ring_test')
+# # pctf = ctf.amp * np.sin(ctf.phs)
+# # pctf[abs(pctf) > 0.01] = 2
+# # pctf[abs(pctf) < 0.01] = 1
+# # pctf[pctf==2] = 0
+# # save_image(pctf, 'ring_test2.png', -1, 1)
+# # 8 nm to 1st ring
+#
+# ctf = calc_ctf_1d_dev(2048, 40e-12, aberrs)
+# kx = ctf.kx * 1e-9
+#
+# pctf = ctf.get_ctf_sine()
+# # pctf[abs(pctf) > 0.01] = 2
+# # pctf[abs(pctf) < 0.01] = 1
+# # pctf[pctf==2] = 0
+#
+# for i in range(0, pctf.shape[0]-1):
+#     if pctf[i] > 0 > pctf[i+1] or pctf[i] < 0 < pctf[i+1]:
+#         print('{0:.2f} nm-1'.format(kx[i]))
+#
+# # save_range_of_ctf_2d_images_dev(1024, 40e-12, [0.0, 101e-9, 10e-9], aberrs, fname='pctf2d')

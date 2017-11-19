@@ -23,8 +23,8 @@ class Thon_ring:
     def copy(self):
         return copy.deepcopy(self)
 
-    def set_mid(self, x, y):
-        self.mid = x, y
+    def set_mid(self, mid=(0, 0)):
+        self.mid = mid
 
     def set_r1(self, a):
         self.r1 = a
@@ -34,6 +34,70 @@ class Thon_ring:
 
     def set_tilt(self, tau):
         self.tilt = tau
+
+# ------------------------------------------------------------
+
+def kx_2_px(kx, width, px_dim):
+    rec_px_dim = 1.0 / (width * px_dim)
+    px = kx / rec_px_dim
+    return px
+
+# ------------------------------------------------------------
+
+def create_Thon_ring_from_x0_and_y0(x, y):
+    tau = np.arctan2(x, y)
+    ring = Thon_ring(mid=(0, 0), tau = tau)
+    ring.r1 = np.sqrt(np.abs(x * y * np.cos(2 * tau) / (y * y * np.cos(tau) ** 2 - x * x * np.sin(tau) ** 2)))
+    ring.r2 = np.sqrt(np.abs(x * y * np.cos(2 * tau) / (x * x * np.cos(tau) ** 2 - y * y * np.sin(tau) ** 2)))
+    # print(x, y, rad2deg(tau))
+    print(ring.r1, ring.r2)
+    return ring
+
+# ------------------------------------------------------------
+
+def create_Thon_ring_from_pctf_zeros(ctf, n):
+    C1 = ctf.abset.get_C1_cf()
+    Cs = ctf.abset.get_Cs_cf()
+    A1 = ctf.abset.get_A1_cf().real
+    # print(C1, Cs, A1)
+
+    if Cs > 0:
+        kx2_delta = np.sqrt((C1 + A1) ** 2 + 4 * n * np.pi * Cs)
+        ky2_delta = np.sqrt((C1 - A1) ** 2 + 4 * n * np.pi * Cs)
+
+        kx2_12 = [(-A1 - C1 + kx2_delta) / (2.0 * Cs), (-A1 - C1 - kx2_delta) / (2.0 * Cs)]
+        ky2_12 = [(A1 - C1 + ky2_delta) / (2.0 * Cs), (A1 - C1 - ky2_delta) / (2.0 * Cs)]
+
+        kx2 = np.max(kx2_12)
+        ky2 = np.max(ky2_12)
+
+        kx = np.sqrt(kx2)
+        ky = np.sqrt(ky2)
+    else:
+        kx = np.sqrt((n * np.pi) / (C1 + A1))
+        ky = np.sqrt(np.abs((n * np.pi) / (C1 - A1)))
+
+    px_x = int(kx_2_px(kx, ctf.w, ctf.px))
+    px_y = int(kx_2_px(ky, ctf.w, ctf.px))
+    ring = create_Thon_ring_from_x0_and_y0(px_x, px_y)
+
+    return ring
+
+# ------------------------------------------------------------
+
+def get_Thon_rings(pctf, threshold=0.1, ap=0):
+
+    if ap > 0:
+        n = pctf.shape[0]
+        c = n // 2
+        y, x = np.ogrid[-c:n-c, -c:n-c]
+        mask = x * x + y * y > ap * ap
+        pctf[mask] = 2
+
+    pctf[abs(pctf) < threshold] = 1
+    pctf[pctf != 1] = 0
+
+    return ctf_calc.scale_image(pctf, 0, 1)
 
 # ------------------------------------------------------------
 
@@ -64,7 +128,6 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
         fileDialog = QtWidgets.QFileDialog()
         img_path = QtWidgets.QFileDialog.getOpenFileName()[0]
         img_data, px_dims = dm3.ReadDm3File(img_path)
-        # px_dims[0] = 40e-12
         fft = np.fft.fft2(img_data)
         fft_amp, fft_phs = ab.complex2polar(fft)
         diff_amp = sim.fft2diff(fft_amp)
@@ -117,7 +180,7 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
         self.A1_amp_edit.setMinimum(0)
         self.A1_amp_edit.setMaximum(1e4)
         self.A1_amp_edit.setSingleStep(10)
-        self.A1_amp_edit.setProperty('value', 0)
+        self.A1_amp_edit.setProperty('value', 1)
         self.A1_amp_edit.setObjectName('A1_amp_edit')
         self.verticalLayout.addWidget(self.A1_amp_edit)
 
@@ -153,7 +216,7 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
         self.df_spread_edit.setMinimum(0)
         self.df_spread_edit.setMaximum(100)
         self.df_spread_edit.setSingleStep(1)
-        self.df_spread_edit.setProperty('value', 0)
+        self.df_spread_edit.setProperty('value', 1)
         self.df_spread_edit.setObjectName('df_spread_edit')
         self.verticalLayout.addWidget(self.df_spread_edit)
 
@@ -165,7 +228,7 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
         self.conv_angle_edit.setMinimum(0)
         self.conv_angle_edit.setMaximum(359)
         self.conv_angle_edit.setSingleStep(1)
-        self.conv_angle_edit.setProperty('value', 0)
+        self.conv_angle_edit.setProperty('value', 1)
         self.conv_angle_edit.setObjectName('conv_angle_edit')
         self.verticalLayout.addWidget(self.conv_angle_edit)
 
@@ -183,8 +246,21 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
         self.verticalLayout.addWidget(self.bright_slider)
         self.verticalLayout.addWidget(self.cont_slider)
 
-        self.img_view.raise_()
-        self.verticalLayoutWidget.raise_()
+        self.update_aberrs()
+        ctf_data = ctf_calc.calc_ctf_2d_dev(img.width, img.px_dim, self.aberrs)
+        pctf_data = ctf_data.get_ctf_sine()
+        thon_rings = get_Thon_rings(pctf_data, threshold=0.1, ap=400)
+        pctf_img = imsup.ImageWithBuffer(pctf_data.shape[0], pctf_data.shape[1])
+        pctf_img.LoadAmpData(thon_rings)
+
+        self.ctf_view = GraphicsLabel(self, pctf_img)
+        self.ctf_view.setGeometry(QtCore.QRect(20, 10, const.ccWidgetDim, const.ccWidgetDim))
+        self.ctf_view.setObjectName('ctf_view')
+        self.ctf_view.opacity.setOpacity(1.0)
+
+        self.img_view.show()
+        self.ctf_view.show()
+        self.verticalLayoutWidget.show()
 
         self.setCentralWidget(self.centralwidget)
         self.menubar = QtWidgets.QMenuBar(self)
@@ -196,12 +272,12 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
         self.setStatusBar(self.statusbar)
 
         self.n_rings_edit.valueChanged.connect(self.update_rings)
-        self.df_edit.valueChanged.connect(self.update_df)
-        self.A1_amp_edit.valueChanged.connect(self.update_A1)
-        self.A1_phs_edit.valueChanged.connect(self.update_A1)
-        self.Cs_edit.valueChanged.connect(self.update_Cs)
-        self.df_spread_edit.valueChanged.connect(self.update_df_sp)
-        self.conv_angle_edit.valueChanged.connect(self.update_conv_ang)
+        self.df_edit.valueChanged.connect(self.update_aberrs)
+        self.A1_amp_edit.valueChanged.connect(self.update_aberrs)
+        self.A1_phs_edit.valueChanged.connect(self.update_aberrs)
+        self.Cs_edit.valueChanged.connect(self.update_aberrs)
+        self.df_spread_edit.valueChanged.connect(self.update_aberrs)
+        self.conv_angle_edit.valueChanged.connect(self.update_aberrs)
 
         # self.find_model_button.clicked.connect(self.run_ransac)
         # self.export_button.clicked.connect(self.export_image)
@@ -222,35 +298,46 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
         self.df_spread_label.setText('Defocus spread [nm]')
         self.conv_angle_label.setText('Conv. angle [mrad]')
 
-    def update_rings(self):
-        ctf = ctf_calc.calc_ctf_1d_dev(self.img_view.image.width, self.img_view.image.px_dim, self.aberrs)
-        ring_positions = ctf_calc.get_pctf_zero_crossings(ctf)
-        if len(ring_positions) == 0:
-            return
-        mid = (const.ccWidgetDim // 2, const.ccWidgetDim // 2)
-        tilt = self.A1_phs_edit.value()
-        self.rings = [ Thon_ring(mid, ring_positions[i], ring_positions[i], tilt) for i in range(self.n_rings_edit.value()) ]
-        self.img_view.update()
-
-    def update_df(self):
+    def update_aberrs(self):
         self.aberrs.set_C1(self.df_edit.value() * 1e-9)
-        self.update_rings()
-
-    def update_A1(self):
-        self.aberrs.set_A1(self.A1_amp_edit.value() * 1e-9, deg2rad(self.A1_phs_edit.value()))  # zmienic na mrad
-        self.update_rings()
-
-    def update_Cs(self):
+        self.aberrs.set_A1(self.A1_amp_edit.value() * 1e-9, deg2rad(self.A1_phs_edit.value()))
         self.aberrs.set_Cs(self.Cs_edit.value() * 1e-3)
-        self.update_rings()
-
-    def update_df_sp(self):
         self.aberrs.set_df_spread(self.df_spread_edit.value() * 1e-9)
-        self.update_rings()
-
-    def update_conv_ang(self):
         self.aberrs.set_conv_angle(self.conv_angle_edit.value() * 1e-3)
-        self.update_rings()
+        # self.update_rings()
+
+    def update_rings(self):
+        self.update_aberrs()
+        ctf_data = ctf_calc.calc_ctf_2d_dev(self.img_view.image.width, self.img_view.image.px_dim, self.aberrs)
+        pctf_data = ctf_data.get_ctf_sine()
+        thon_rings = get_Thon_rings(pctf_data, threshold=0.1, ap=400)
+        self.ctf_view.image_to_disp = np.copy(thon_rings)
+        self.ctf_view.repaint_pixmap()
+
+    # def update_rings(self):
+    #     ctf = ctf_calc.calc_ctf_2d_dev(self.img_view.image.width, self.img_view.image.px_dim, self.aberrs)
+    #     self.rings = [ create_Thon_ring_from_pctf_zeros(ctf, i) for i in range(1, self.n_rings_edit.value() + 1) ]
+    #     self.img_view.update()
+
+    # def update_df(self):
+    #     self.aberrs.set_C1(self.df_edit.value() * 1e-9)
+    #     self.update_rings()
+    #
+    # def update_A1(self):
+    #     self.aberrs.set_A1(self.A1_amp_edit.value() * 1e-9, deg2rad(self.A1_phs_edit.value()))  # zmienic na mrad
+    #     self.update_rings()
+    #
+    # def update_Cs(self):
+    #     self.aberrs.set_Cs(self.Cs_edit.value() * 1e-3)
+    #     self.update_rings()
+    #
+    # def update_df_sp(self):
+    #     self.aberrs.set_df_spread(self.df_spread_edit.value() * 1e-9)
+    #     self.update_rings()
+    #
+    # def update_conv_ang(self):
+    #     self.aberrs.set_conv_angle(self.conv_angle_edit.value() * 1e-3)
+    #     self.update_rings()
 
 # -------------------------------------------------------------------
 
@@ -265,9 +352,14 @@ class GraphicsLabel(QtWidgets.QLabel):
         self.view = QtWidgets.QGraphicsView(self)
         self.scene = QtWidgets.QGraphicsScene()
         self.view.setScene(self.scene)
+        self.view.setStyleSheet('background: transparent')
 
         self.gain = 1.0
         self.bias = 0.0
+
+        self.opacity = QtWidgets.QGraphicsOpacityEffect(self)
+        self.view.setGraphicsEffect(self.opacity)
+        self.opacity.setOpacity(1.0)
 
         self.repaint_pixmap()
         self.view.show()
@@ -276,16 +368,28 @@ class GraphicsLabel(QtWidgets.QLabel):
         # self.image.UpdateImageFromBuffer()
         # padded_image = imsup.PadImageBufferToNx512(self.image, np.max(self.image.buffer))
         s_image = ctf_calc.scale_image(self.image_to_disp, 0.0, 255.0)
-
         q_image = QtGui.QImage(s_image.astype(np.uint8), s_image.shape[1], s_image.shape[0], QtGui.QImage.Format_Indexed8)
+        q_image = q_image.convertToFormat(QtGui.QImage.Format_ARGB32)
+
+        # jak to przyspieszyc?
+        for x in range(q_image.height()):
+            for y in range(q_image.width()):
+                color = QtGui.QColor(q_image.pixel(x, y))
+                # print(color.black(), color.alpha())
+                if color.black() == 255:
+                    q_image.setPixel(x, y, QtGui.QColor(0,0,0,0).rgba())
+
         pixmap = QtGui.QPixmap(q_image)
         pixmap = pixmap.scaledToWidth(const.ccWidgetDim)
 
-        if len(self.scene.items()) > 0:
-            self.scene.removeItem(self.scene.items()[-1])
+        # if len(self.scene.items()) > 0:
+        #     self.scene.removeItem(self.scene.items()[-1])
+
+        for item in self.scene.items():
+            self.scene.removeItem(item)
 
         self.scene.addPixmap(pixmap)
-        self.update()
+        # self.update()
 
     def change_gain_and_bias(self):
         self.gain = self.parent().cont_slider.value() * 0.02

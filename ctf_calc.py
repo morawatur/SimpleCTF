@@ -111,9 +111,9 @@ def calc_ctf_2d_dev(img_dim, px_dim, aberrations, fname='pctf2d'):
     ctf_2d.calc_env_funs()
     ctf_2d.calc_ctf()
 
-    pctf_2d = ctf_2d.get_ctf_sine()
-    save_image(pctf_2d, '{0}.png'.format(fname), -1, 1)
-    return ctf_2d.ctf
+    # pctf_2d = ctf_2d.get_ctf_sine()
+    # save_image(pctf_2d, '{0}.png'.format(fname), -1, 1)
+    return ctf_2d
 
 # ---------------------------------------------------------------
 
@@ -293,3 +293,44 @@ def get_pctf_zero_crossings(ctf):
 #         print('{0:.2f} nm-1'.format(kx[i]))
 #
 # # save_range_of_ctf_2d_images_dev(1024, 40e-12, [0.0, 101e-9, 10e-9], aberrs, fname='pctf2d')
+
+# def create_Thon_ring_from_pctf_zeros(ctf, n):
+#     # kx, ky = ab.calc_kx_ky(ctf.w, ctf.px)
+#     C1 = ctf.abset.get_C1_cf()
+#     Cs = ctf.abset.get_Cs_cf()
+#     print(Cs)
+#     A1 = ctf.abset.get_A1_cf().real
+#
+#     if Cs > 0:
+#         kx = np.sqrt((n * np.pi) / (C1 + A1)) * 1e-9
+#         ky = np.sqrt((n * np.pi) / (C1 - A1)) * 1e-9
+#         tau = np.arctan2(kx, ky)
+#         print(tau * 180.0 / np.pi)
+#         print(kx, ky)
+#     else:
+#         kx2_delta = np.sqrt((C1 + A1) ** 2 + 4 * n * np.pi * Cs)
+#         ky2_delta = np.sqrt((C1 - A1) ** 2 + 4 * n * np.pi * Cs)
+#
+#         kx2_12 = [ (-A1 - C1 + kx2_delta) / (2.0 * Cs), (-A1 - C1 - kx2_delta) / (2.0 * Cs) ]
+#         ky2_12 = [ (A1 - C1 + ky2_delta) / (2.0 * Cs), (A1 - C1 - ky2_delta) / (2.0 * Cs) ]
+#
+#         kx2 = np.max(kx2_12)
+#         ky2 = np.max(ky2_12)
+#
+#         kx = [ np.sqrt(kx2) * 1e-9, -np.sqrt(kx2) * 1e-9 ]
+#         ky = [ np.sqrt(ky2) * 1e-9, -np.sqrt(ky2) * 1e-9 ]
+#
+#         print(kx)
+#         print(ky)
+#
+# aberrs = ab.Aberrations()
+# aberrs.set_C1(20e-9)
+# aberrs.set_Cs(0.6e-3)
+# aberrs.set_A1(1e-9, np.pi)
+# # aberrs.A1.set_am_ph(1e-8, np.pi)
+# aberrs.set_df_spread(0.0)
+# aberrs.set_conv_angle(0.0)
+#
+# ctf = calc_ctf_2d_dev(1024, 40e-12, aberrs, 'hello')
+#
+# create_Thon_ring_from_pctf_zeros(ctf, 1)

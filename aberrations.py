@@ -87,8 +87,6 @@ class Aberrations:
         A2_cf_im = 0.0
         return A2_cf_re + 1j * A2_cf_im
 
-
-
 # ---------------------------------------------------------------
 
 class ContrastTransferFunction2D:

@@ -1,5 +1,4 @@
 import Constants as const
-import CrossCorr as cc
 import Dm3Reader3 as dm3
 import ImageSupport as imsup
 import ctf_calc
@@ -8,7 +7,7 @@ import simulation as sim
 
 import numpy as np
 import copy
-from functools import partial
+# from functools import partial
 from PyQt5 import QtGui, QtCore, QtWidgets
 
 # -------------------------------------------------------------------
@@ -85,7 +84,7 @@ def create_Thon_ring_from_pctf_zeros(ctf, n):
 
 # ------------------------------------------------------------
 
-def get_Thon_rings(pctf, threshold=0.1, ap=0):
+def get_Thon_rings(pctf, ap=0, threshold=0.1):
 
     if ap > 0:
         n = pctf.shape[0]
@@ -141,119 +140,117 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
         self.img_view.setObjectName('img_view')
 
         self.verticalLayoutWidget = QtWidgets.QWidget(self.centralwidget)
-        self.verticalLayoutWidget.setGeometry(QtCore.QRect(560, 20, 160, 340))
+        self.verticalLayoutWidget.setGeometry(QtCore.QRect(560, 10, 160, 512))
         self.verticalLayoutWidget.setObjectName('verticalLayoutWidget')
         self.verticalLayout = QtWidgets.QVBoxLayout(self.verticalLayoutWidget)
         self.verticalLayout.setObjectName('verticalLayout')
 
-        self.n_rings_label = QtWidgets.QLabel(self.verticalLayoutWidget)
-        self.n_rings_label.setEnabled(True)
-        self.n_rings_label.setObjectName('n_rings_label')
-        self.verticalLayout.addWidget(self.n_rings_label)
-
-        self.n_rings_edit = QtWidgets.QSpinBox(self.verticalLayoutWidget)
-        self.n_rings_edit.setMinimum(1)
-        self.n_rings_edit.setMaximum(5)
-        self.n_rings_edit.setSingleStep(1)
-        self.n_rings_edit.setProperty('value', 1)
-        self.n_rings_edit.setObjectName('n_rings_edit')
-        self.verticalLayout.addWidget(self.n_rings_edit)
-
-        self.df_label = QtWidgets.QLabel(self.verticalLayoutWidget)
+        self.df_label = QtWidgets.QLabel('Defocus [nm]', self.verticalLayoutWidget)
         self.df_label.setEnabled(True)
         self.df_label.setObjectName('df_label')
         self.verticalLayout.addWidget(self.df_label)
 
-        self.df_edit = QtWidgets.QSpinBox(self.verticalLayoutWidget)
-        self.df_edit.setMinimum(-1e4)
-        self.df_edit.setMaximum(1e4)
-        self.df_edit.setSingleStep(10)
-        self.df_edit.setProperty('value', 20)
-        self.df_edit.setObjectName('df_edit')
-        self.verticalLayout.addWidget(self.df_edit)
+        self.df_input = QtWidgets.QLineEdit(self.verticalLayoutWidget)
+        self.df_input.setText(str(40.0))
+        self.df_input.setObjectName('df_input')
+        self.verticalLayout.addWidget(self.df_input)
 
-        self.A1_amp_label = QtWidgets.QLabel(self.verticalLayoutWidget)
+        self.A1_amp_label = QtWidgets.QLabel('A1 amplitude [nm]', self.verticalLayoutWidget)
         self.A1_amp_label.setObjectName('A1_amp_label')
         self.verticalLayout.addWidget(self.A1_amp_label)
 
-        self.A1_amp_edit = QtWidgets.QSpinBox(self.verticalLayoutWidget)
-        self.A1_amp_edit.setMinimum(0)
-        self.A1_amp_edit.setMaximum(1e4)
-        self.A1_amp_edit.setSingleStep(10)
-        self.A1_amp_edit.setProperty('value', 1)
-        self.A1_amp_edit.setObjectName('A1_amp_edit')
-        self.verticalLayout.addWidget(self.A1_amp_edit)
+        self.A1_amp_input = QtWidgets.QLineEdit(self.verticalLayoutWidget)
+        self.A1_amp_input.setText(str(0.0))
+        self.A1_amp_input.setObjectName('A1_amp_input')
+        self.verticalLayout.addWidget(self.A1_amp_input)
 
-        self.A1_phs_label = QtWidgets.QLabel(self.verticalLayoutWidget)
+        self.A1_phs_label = QtWidgets.QLabel('A1 angle [deg]', self.verticalLayoutWidget)
         self.A1_phs_label.setObjectName('A1_phs_label')
         self.verticalLayout.addWidget(self.A1_phs_label)
 
-        self.A1_phs_edit = QtWidgets.QSpinBox(self.verticalLayoutWidget)
-        self.A1_phs_edit.setMinimum(0)
-        self.A1_phs_edit.setMaximum(359)
-        self.A1_phs_edit.setSingleStep(1)
-        self.A1_phs_edit.setProperty('value', 0)
-        self.A1_phs_edit.setObjectName('A1_phs_edit')
-        self.verticalLayout.addWidget(self.A1_phs_edit)
+        self.A1_phs_input = QtWidgets.QLineEdit(self.verticalLayoutWidget)
+        self.A1_phs_input.setText(str(0.0))
+        self.A1_phs_input.setObjectName('A1_phs_input')
+        self.verticalLayout.addWidget(self.A1_phs_input)
 
-        self.Cs_label = QtWidgets.QLabel(self.verticalLayoutWidget)
+        self.Cs_label = QtWidgets.QLabel('Cs [mm]', self.verticalLayoutWidget)
         self.Cs_label.setObjectName('Cs_label')
         self.verticalLayout.addWidget(self.Cs_label)
 
-        self.Cs_edit = QtWidgets.QSpinBox(self.verticalLayoutWidget)
-        self.Cs_edit.setMinimum(0)
-        self.Cs_edit.setMaximum(1000)
-        self.Cs_edit.setSingleStep(10)
-        self.Cs_edit.setProperty('value', 0)
-        self.Cs_edit.setObjectName('Cs_edit')
-        self.verticalLayout.addWidget(self.Cs_edit)
+        self.Cs_input = QtWidgets.QLineEdit(self.verticalLayoutWidget)
+        self.Cs_input.setText(str(0.0))
+        self.Cs_input.setObjectName('Cs_input')
+        self.verticalLayout.addWidget(self.Cs_input)
 
-        self.df_spread_label = QtWidgets.QLabel(self.verticalLayoutWidget)
+        self.df_spread_label = QtWidgets.QLabel('Defocus spread [nm]', self.verticalLayoutWidget)
         self.df_spread_label.setObjectName('df_spread_label')
         self.verticalLayout.addWidget(self.df_spread_label)
 
-        self.df_spread_edit = QtWidgets.QSpinBox(self.verticalLayoutWidget)
-        self.df_spread_edit.setMinimum(0)
-        self.df_spread_edit.setMaximum(100)
-        self.df_spread_edit.setSingleStep(1)
-        self.df_spread_edit.setProperty('value', 1)
-        self.df_spread_edit.setObjectName('df_spread_edit')
-        self.verticalLayout.addWidget(self.df_spread_edit)
+        self.df_spread_input = QtWidgets.QLineEdit(self.verticalLayoutWidget)
+        self.df_spread_input.setText(str(0.0))
+        self.df_spread_input.setObjectName('df_spread_input')
+        self.verticalLayout.addWidget(self.df_spread_input)
 
-        self.conv_angle_label = QtWidgets.QLabel(self.verticalLayoutWidget)
+        self.conv_angle_label = QtWidgets.QLabel('Conv. angle [mrad]', self.verticalLayoutWidget)
         self.conv_angle_label.setObjectName('conv_angle_label')
         self.verticalLayout.addWidget(self.conv_angle_label)
 
-        self.conv_angle_edit = QtWidgets.QSpinBox(self.verticalLayoutWidget)
-        self.conv_angle_edit.setMinimum(0)
-        self.conv_angle_edit.setMaximum(359)
-        self.conv_angle_edit.setSingleStep(1)
-        self.conv_angle_edit.setProperty('value', 1)
-        self.conv_angle_edit.setObjectName('conv_angle_edit')
-        self.verticalLayout.addWidget(self.conv_angle_edit)
+        self.conv_angle_input = QtWidgets.QLineEdit(self.verticalLayoutWidget)
+        self.conv_angle_input.setText(str(0.0))
+        self.conv_angle_input.setObjectName('conv_angle_input')
+        self.verticalLayout.addWidget(self.conv_angle_input)
+
+        self.aperture_label = QtWidgets.QLabel('Aperture [px]', self.verticalLayoutWidget)
+        self.aperture_label.setObjectName('aperture_label')
+        self.verticalLayout.addWidget(self.aperture_label)
+
+        self.aperture_input = QtWidgets.QLineEdit(self.verticalLayoutWidget)
+        self.aperture_input.setText(str(0))
+        self.verticalLayout.addWidget(self.aperture_input)
+
+        self.threshold_label = QtWidgets.QLabel('Ring width [au]', self.verticalLayoutWidget)
+        self.threshold_label.setObjectName('threshold_label')
+        self.verticalLayout.addWidget(self.threshold_label)
+
+        self.threshold_input = QtWidgets.QLineEdit(self.verticalLayoutWidget)
+        self.threshold_input.setText(str(0.01))
+        self.verticalLayout.addWidget(self.threshold_input)
+
+        self.verticalLayout.addStretch()
+
+        self.update_button = QtWidgets.QPushButton('Update', self.verticalLayoutWidget)
+        self.update_button.clicked.connect(self.update_rings)
+        self.verticalLayout.addWidget(self.update_button)
+
+        self.bright_label = QtWidgets.QLabel('Brightness', self.verticalLayoutWidget)
+        self.cont_label = QtWidgets.QLabel('Contrast', self.verticalLayoutWidget)
 
         self.bright_slider = QtWidgets.QSlider(QtCore.Qt.Horizontal)
+        self.bright_slider.setFixedHeight(16)
         self.bright_slider.setRange(0.0, 100.0)
         self.bright_slider.setValue(50.0)
 
         self.cont_slider = QtWidgets.QSlider(QtCore.Qt.Horizontal)
+        self.cont_slider.setFixedHeight(16)
         self.cont_slider.setRange(1.0, 100.0)
         self.cont_slider.setValue(50.0)
 
         self.bright_slider.valueChanged.connect(self.img_view.change_gain_and_bias)
         self.cont_slider.valueChanged.connect(self.img_view.change_gain_and_bias)
 
+        self.verticalLayout.addWidget(self.bright_label)
         self.verticalLayout.addWidget(self.bright_slider)
+        self.verticalLayout.addWidget(self.cont_label)
         self.verticalLayout.addWidget(self.cont_slider)
 
         self.update_aberrs()
         ctf_data = ctf_calc.calc_ctf_2d_dev(img.width, img.px_dim, self.aberrs)
         pctf_data = ctf_data.get_ctf_sine()
-        thon_rings = get_Thon_rings(pctf_data, threshold=0.1, ap=400)
+        thon_rings = get_Thon_rings(pctf_data, ap=int(self.aperture_input.text()), threshold=float(self.threshold_input.text()))
         pctf_img = imsup.ImageWithBuffer(pctf_data.shape[0], pctf_data.shape[1])
         pctf_img.LoadAmpData(thon_rings)
 
-        self.ctf_view = GraphicsLabel(self, pctf_img)
+        self.ctf_view = GraphicsLabel(self, pctf_img, mzt=True)
         self.ctf_view.setGeometry(QtCore.QRect(20, 10, const.ccWidgetDim, const.ccWidgetDim))
         self.ctf_view.setObjectName('ctf_view')
         self.ctf_view.opacity.setOpacity(1.0)
@@ -271,46 +268,23 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
         self.statusbar.setObjectName('statusbar')
         self.setStatusBar(self.statusbar)
 
-        self.n_rings_edit.valueChanged.connect(self.update_rings)
-        self.df_edit.valueChanged.connect(self.update_aberrs)
-        self.A1_amp_edit.valueChanged.connect(self.update_aberrs)
-        self.A1_phs_edit.valueChanged.connect(self.update_aberrs)
-        self.Cs_edit.valueChanged.connect(self.update_aberrs)
-        self.df_spread_edit.valueChanged.connect(self.update_aberrs)
-        self.conv_angle_edit.valueChanged.connect(self.update_aberrs)
-
-        # self.find_model_button.clicked.connect(self.run_ransac)
-        # self.export_button.clicked.connect(self.export_image)
-        # self.crop_button.clicked.connect(self.crop_image)
-
         self.statusbar.showMessage('Ready')
-        self.retranslateUi(self)
+        self.setWindowTitle('Aberration fitter')
         QtCore.QMetaObject.connectSlotsByName(self)
         self.show()
 
-    def retranslateUi(self, MainWindow):
-        MainWindow.setWindowTitle('Aberration fitter')
-        self.n_rings_label.setText('Num. of rings')
-        self.df_label.setText('Defocus [nm]')
-        self.A1_amp_label.setText('A1 amplitude [nm]')
-        self.A1_phs_label.setText('A1 angle [deg]')
-        self.Cs_label.setText('Cs [mm]')
-        self.df_spread_label.setText('Defocus spread [nm]')
-        self.conv_angle_label.setText('Conv. angle [mrad]')
-
     def update_aberrs(self):
-        self.aberrs.set_C1(self.df_edit.value() * 1e-9)
-        self.aberrs.set_A1(self.A1_amp_edit.value() * 1e-9, deg2rad(self.A1_phs_edit.value()))
-        self.aberrs.set_Cs(self.Cs_edit.value() * 1e-3)
-        self.aberrs.set_df_spread(self.df_spread_edit.value() * 1e-9)
-        self.aberrs.set_conv_angle(self.conv_angle_edit.value() * 1e-3)
-        # self.update_rings()
+        self.aberrs.set_C1(float(self.df_input.text()) * 1e-9)
+        self.aberrs.set_A1(float(self.A1_amp_input.text()) * 1e-9, deg2rad(float(self.A1_phs_input.text())))
+        self.aberrs.set_Cs(float(self.Cs_input.text()) * 1e-3)
+        self.aberrs.set_df_spread(float(self.df_spread_input.text()) * 1e-9)
+        self.aberrs.set_conv_angle(float(self.conv_angle_input.text()) * 1e-3)
 
     def update_rings(self):
         self.update_aberrs()
         ctf_data = ctf_calc.calc_ctf_2d_dev(self.img_view.image.width, self.img_view.image.px_dim, self.aberrs)
         pctf_data = ctf_data.get_ctf_sine()
-        thon_rings = get_Thon_rings(pctf_data, threshold=0.1, ap=400)
+        thon_rings = get_Thon_rings(pctf_data, ap=int(self.aperture_input.text()), threshold=float(self.threshold_input.text()))
         self.ctf_view.image_to_disp = np.copy(thon_rings)
         self.ctf_view.repaint_pixmap()
 
@@ -319,30 +293,10 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
     #     self.rings = [ create_Thon_ring_from_pctf_zeros(ctf, i) for i in range(1, self.n_rings_edit.value() + 1) ]
     #     self.img_view.update()
 
-    # def update_df(self):
-    #     self.aberrs.set_C1(self.df_edit.value() * 1e-9)
-    #     self.update_rings()
-    #
-    # def update_A1(self):
-    #     self.aberrs.set_A1(self.A1_amp_edit.value() * 1e-9, deg2rad(self.A1_phs_edit.value()))  # zmienic na mrad
-    #     self.update_rings()
-    #
-    # def update_Cs(self):
-    #     self.aberrs.set_Cs(self.Cs_edit.value() * 1e-3)
-    #     self.update_rings()
-    #
-    # def update_df_sp(self):
-    #     self.aberrs.set_df_spread(self.df_spread_edit.value() * 1e-9)
-    #     self.update_rings()
-    #
-    # def update_conv_ang(self):
-    #     self.aberrs.set_conv_angle(self.conv_angle_edit.value() * 1e-3)
-    #     self.update_rings()
-
 # -------------------------------------------------------------------
 
 class GraphicsLabel(QtWidgets.QLabel):
-    def __init__(self, parent, image=None):
+    def __init__(self, parent, image=None, mzt=False):
         super(GraphicsLabel, self).__init__(parent)
 
         self.image = image
@@ -361,23 +315,24 @@ class GraphicsLabel(QtWidgets.QLabel):
         self.view.setGraphicsEffect(self.opacity)
         self.opacity.setOpacity(1.0)
 
+        self.make_zero_transparent = mzt
+
         self.repaint_pixmap()
         self.view.show()
 
     def repaint_pixmap(self):
         # self.image.UpdateImageFromBuffer()
         # padded_image = imsup.PadImageBufferToNx512(self.image, np.max(self.image.buffer))
-        s_image = ctf_calc.scale_image(self.image_to_disp, 0.0, 255.0)
-        q_image = QtGui.QImage(s_image.astype(np.uint8), s_image.shape[1], s_image.shape[0], QtGui.QImage.Format_Indexed8)
-        q_image = q_image.convertToFormat(QtGui.QImage.Format_ARGB32)
 
-        # jak to przyspieszyc?
-        for x in range(q_image.height()):
-            for y in range(q_image.width()):
-                color = QtGui.QColor(q_image.pixel(x, y))
-                # print(color.black(), color.alpha())
-                if color.black() == 255:
-                    q_image.setPixel(x, y, QtGui.QColor(0,0,0,0).rgba())
+        if self.make_zero_transparent:
+            s_image = ctf_calc.scale_image(self.image_to_disp, 0.0, 255.0).astype(np.uint32)
+            alphas = np.ones(s_image.shape, dtype=np.uint32)
+            alphas *= s_image
+            s_image_argb32 = (alphas << 24 | s_image[:, :] << 16 | s_image[:, :] << 8 | s_image[:, :])
+            q_image = QtGui.QImage(s_image_argb32, s_image_argb32.shape[1], s_image_argb32.shape[0], QtGui.QImage.Format_ARGB32)
+        else:
+            s_image = ctf_calc.scale_image(self.image_to_disp, 0.0, 255.0)
+            q_image = QtGui.QImage(s_image.astype(np.uint8), s_image.shape[1], s_image.shape[0], QtGui.QImage.Format_Indexed8)
 
         pixmap = QtGui.QPixmap(q_image)
         pixmap = pixmap.scaledToWidth(const.ccWidgetDim)
@@ -394,7 +349,7 @@ class GraphicsLabel(QtWidgets.QLabel):
     def change_gain_and_bias(self):
         self.gain = self.parent().cont_slider.value() * 0.02
         self.bias = self.parent().bright_slider.value() * 1.5 - 75
-        print(self.gain, self.bias)
+        # print(self.gain, self.bias)
         self.image_to_disp = self.gain * self.scaled_image + self.bias
         self.repaint_pixmap()
 

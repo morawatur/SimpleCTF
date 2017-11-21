@@ -120,7 +120,7 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
 
     def setupUi(self):
         self.setObjectName('MainWindow')
-        self.resize(750, 580)
+        self.resize(750, 640)
         self.centralwidget = QtWidgets.QWidget(self)
         self.centralwidget.setObjectName('centralwidget')
 
@@ -140,7 +140,7 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
         self.img_view.setObjectName('img_view')
 
         self.verticalLayoutWidget = QtWidgets.QWidget(self.centralwidget)
-        self.verticalLayoutWidget.setGeometry(QtCore.QRect(560, 10, 160, 512))
+        self.verticalLayoutWidget.setGeometry(QtCore.QRect(560, 10, 160, 600))
         self.verticalLayoutWidget.setObjectName('verticalLayoutWidget')
         self.verticalLayout = QtWidgets.QVBoxLayout(self.verticalLayoutWidget)
         self.verticalLayout.setObjectName('verticalLayout')
@@ -216,7 +216,7 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
         self.threshold_input.setText(str(0.01))
         self.verticalLayout.addWidget(self.threshold_input)
 
-        self.verticalLayout.addStretch()
+        self.verticalLayout.addStretch(1)
 
         self.update_button = QtWidgets.QPushButton('Update', self.verticalLayoutWidget)
         self.update_button.clicked.connect(self.update_rings)
@@ -224,24 +224,44 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
 
         self.bright_label = QtWidgets.QLabel('Brightness', self.verticalLayoutWidget)
         self.cont_label = QtWidgets.QLabel('Contrast', self.verticalLayoutWidget)
+        self.gamma_label = QtWidgets.QLabel('Gamma', self.verticalLayoutWidget)
 
         self.bright_slider = QtWidgets.QSlider(QtCore.Qt.Horizontal)
-        self.bright_slider.setFixedHeight(16)
+        self.bright_slider.setFixedHeight(14)
         self.bright_slider.setRange(0.0, 100.0)
         self.bright_slider.setValue(50.0)
 
         self.cont_slider = QtWidgets.QSlider(QtCore.Qt.Horizontal)
-        self.cont_slider.setFixedHeight(16)
+        self.cont_slider.setFixedHeight(14)
         self.cont_slider.setRange(1.0, 100.0)
         self.cont_slider.setValue(50.0)
 
-        self.bright_slider.valueChanged.connect(self.img_view.change_gain_and_bias)
-        self.cont_slider.valueChanged.connect(self.img_view.change_gain_and_bias)
+        self.gamma_slider = QtWidgets.QSlider(QtCore.Qt.Horizontal)
+        self.gamma_slider.setFixedHeight(14)
+        self.gamma_slider.setRange(50.0, 150.0)
+        self.gamma_slider.setValue(100.0)
+
+        self.bright_slider.valueChanged.connect(self.img_view.correct_image)
+        self.cont_slider.valueChanged.connect(self.img_view.correct_image)
+        self.gamma_slider.valueChanged.connect(self.img_view.correct_image)
 
         self.verticalLayout.addWidget(self.bright_label)
         self.verticalLayout.addWidget(self.bright_slider)
         self.verticalLayout.addWidget(self.cont_label)
         self.verticalLayout.addWidget(self.cont_slider)
+        self.verticalLayout.addWidget(self.gamma_label)
+        self.verticalLayout.addWidget(self.gamma_slider)
+
+        log_box = QtWidgets.QHBoxLayout(self.verticalLayoutWidget)
+        self.log_label = QtWidgets.QLabel('Log.')
+        self.log_input = QtWidgets.QLineEdit(self.verticalLayoutWidget)
+        self.log_input.setText(str(-1))
+        self.log_button = QtWidgets.QPushButton('OK')
+        self.log_button.clicked.connect(self.img_view.set_log_base)
+        log_box.addWidget(self.log_label)
+        log_box.addWidget(self.log_input)
+        log_box.addWidget(self.log_button)
+        self.verticalLayout.addLayout(log_box)
 
         self.update_aberrs()
         ctf_data = ctf_calc.calc_ctf_2d_dev(img.width, img.px_dim, self.aberrs)
@@ -253,7 +273,7 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
         self.ctf_view = GraphicsLabel(self, pctf_img, mzt=True)
         self.ctf_view.setGeometry(QtCore.QRect(20, 10, const.ccWidgetDim, const.ccWidgetDim))
         self.ctf_view.setObjectName('ctf_view')
-        self.ctf_view.opacity.setOpacity(1.0)
+        self.ctf_view.opacity.setOpacity(0.7)
 
         self.img_view.show()
         self.ctf_view.show()
@@ -310,6 +330,8 @@ class GraphicsLabel(QtWidgets.QLabel):
 
         self.gain = 1.0
         self.bias = 0.0
+        self.gamma = 1.0
+        self.log_base = -1
 
         self.opacity = QtWidgets.QGraphicsOpacityEffect(self)
         self.view.setGraphicsEffect(self.opacity)
@@ -346,11 +368,25 @@ class GraphicsLabel(QtWidgets.QLabel):
         self.scene.addPixmap(pixmap)
         # self.update()
 
-    def change_gain_and_bias(self):
-        self.gain = self.parent().cont_slider.value() * 0.02
-        self.bias = self.parent().bright_slider.value() * 1.5 - 75
-        # print(self.gain, self.bias)
-        self.image_to_disp = self.gain * self.scaled_image + self.bias
+    def set_log_base(self):
+        self.log_base = float(self.parent().log_input.text())
+        self.correct_image()
+
+    def correct_image(self):
+        self.gain = int(self.parent().cont_slider.value()) * 0.02
+        self.bias = int(self.parent().bright_slider.value()) * 1.5 - 75
+        self.gamma = int(self.parent().gamma_slider.value()) * 0.01
+        # print(self.gain, self.bias, self.gamma, self.log_base)
+
+        if self.log_base < 0:
+            self.image_to_disp = self.gain * (self.scaled_image ** self.gamma) + self.bias
+        else:
+            img_to_log = np.copy(self.scaled_image)
+            img_to_log[img_to_log < 1e-7] = 1
+            log_scaled_image = np.log(img_to_log) / np.log(self.log_base)
+            log_scaled_image = ctf_calc.scale_image(log_scaled_image, np.min(log_scaled_image), np.max(log_scaled_image))
+            self.image_to_disp = self.gain * (log_scaled_image ** self.gamma) + self.bias
+
         self.repaint_pixmap()
 
     def update(self):

@@ -1,3 +1,10 @@
+import re
+import sys
+from os import path
+import numpy as np
+import copy
+# from functools import partial
+
 import Constants as const
 import Dm3Reader3 as dm3
 import ImageSupport as imsup
@@ -5,9 +12,6 @@ import ctf_calc
 import aberrations as ab
 import simulation as sim
 
-import numpy as np
-import copy
-# from functools import partial
 from PyQt5 import QtGui, QtCore, QtWidgets
 
 # -------------------------------------------------------------------
@@ -110,47 +114,56 @@ def rad2deg(rad):
 
 # -------------------------------------------------------------------
 
-class Ui_MainWindow(QtWidgets.QMainWindow):
+class AberFitterWin(QtWidgets.QMainWindow):
+    init_params = { 'C1': 40e-9, 'Cs': 0.0, 'A1_amp': 0.0, 'A1_phs': 0, 'df_spread': 0.0, 'conv_angle': 0.0,
+                  'aperture': 0, 'ring_width': 0.01 }
+
     def __init__(self, app=None):
-        super(Ui_MainWindow, self).__init__()
+        super(AberFitterWin, self).__init__()
         self.rings = []
         self.aberrs = ab.Aberrations()
+        self.init_aberrs()
         self.app = app
-        self.setupUi()
+        self.setup_ui()
 
-    def setupUi(self):
-        self.setObjectName('MainWindow')
+    def setup_ui(self):
         self.resize(750, 640)
-        self.centralwidget = QtWidgets.QWidget(self)
-        self.centralwidget.setObjectName('centralwidget')
+        self.central_widget = QtWidgets.QWidget(self)
+
+        # ----- Image view -----
 
         fileDialog = QtWidgets.QFileDialog()
         img_path = QtWidgets.QFileDialog.getOpenFileName()[0]
-        img_data, px_dims = dm3.ReadDm3File(img_path)
-        fft = np.fft.fft2(img_data)
-        fft_amp, fft_phs = ab.complex2polar(fft)
-        diff_amp = sim.fft2diff(fft_amp)
-        diff_amp = np.log10(diff_amp)
-
-        img = imsup.ImageWithBuffer(img_data.shape[0], img_data.shape[1], imsup.Image.cmp['CAP'], imsup.Image.mem['CPU'], px_dim_sz=px_dims[0])
-        img.LoadAmpData(diff_amp)
-
-
-        # ----- Image view -----
+        img = load_image_series_from_first_file(img_path)
 
         self.img_view = GraphicsLabel(self, img)
         self.img_view.setGeometry(QtCore.QRect(20, 10, const.ccWidgetDim, const.ccWidgetDim))
 
+        # ----- CTF overlay -----
+
+        # self.update_aberrs()
+        ctf_data = ctf_calc.calc_ctf_2d_dev(img.width, img.px_dim, self.aberrs)
+        pctf_data = ctf_data.get_ctf_sine()
+        thon_rings = get_Thon_rings(pctf_data, ap=AberFitterWin.init_params['aperture'],
+                                    threshold=AberFitterWin.init_params['ring_width'])
+        pctf_img = imsup.ImageWithBuffer(pctf_data.shape[0], pctf_data.shape[1])
+        pctf_img.LoadAmpData(thon_rings)
+
+        self.ctf_view = GraphicsLabel(self, pctf_img, mzt=True)
+        # self.ctf_view.setGeometry(QtCore.QRect(20, 10, const.ccWidgetDim, const.ccWidgetDim))
+        self.ctf_view.setGeometry(self.img_view.geometry())
+        self.ctf_view.opacity.setOpacity(0.7)
+
         # ----- Horizontal layout 1 (navigation) -----
 
-        self.nav_hbox_widget = QtWidgets.QWidget(self.centralwidget)
+        self.nav_hbox_widget = QtWidgets.QWidget(self.central_widget)
         self.nav_hbox_widget.setGeometry(QtCore.QRect(20, 520, 512, 50))
 
-        self.prev_button = QtWidgets.QPushButton(QtGui.QIcon('gui/prev.png'), '', self.nav_hbox_widget)
-        # self.prev_button.clicked.connect(self.prev_image)
+        self.prev_button = QtWidgets.QPushButton(QtGui.QIcon('gui/left.png'), '', self.nav_hbox_widget)
+        self.prev_button.clicked.connect(self.prev_image)
 
-        self.next_button = QtWidgets.QPushButton(QtGui.QIcon('gui/next.png'), '', self.nav_hbox_widget)
-        # self.next_button.clicked.connect(self.next_image)
+        self.next_button = QtWidgets.QPushButton(QtGui.QIcon('gui/right.png'), '', self.nav_hbox_widget)
+        self.next_button.clicked.connect(self.next_image)
 
         self.nav_hbox = QtWidgets.QHBoxLayout(self.nav_hbox_widget)
         self.nav_hbox.addWidget(self.prev_button)
@@ -158,79 +171,65 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
 
         # ----- Vertical layout 1 (aberrations) -----
 
-        self.aber_vbox_widget = QtWidgets.QWidget(self.centralwidget)
+        self.aber_vbox_widget = QtWidgets.QWidget(self.central_widget)
         self.aber_vbox_widget.setGeometry(QtCore.QRect(560, 10, 160, 600))
         self.aber_vbox = QtWidgets.QVBoxLayout(self.aber_vbox_widget)
 
         self.df_label = QtWidgets.QLabel('Defocus [nm]', self.aber_vbox_widget)
         self.df_label.setEnabled(True)
-        self.df_label.setObjectName('df_label')
         self.aber_vbox.addWidget(self.df_label)
 
         self.df_input = QtWidgets.QLineEdit(self.aber_vbox_widget)
-        self.df_input.setText(str(40.0))
-        self.df_input.setObjectName('df_input')
+        self.df_input.setText(str(AberFitterWin.init_params['C1'] * 1e9))
         self.aber_vbox.addWidget(self.df_input)
 
         self.A1_amp_label = QtWidgets.QLabel('A1 amplitude [nm]', self.aber_vbox_widget)
-        self.A1_amp_label.setObjectName('A1_amp_label')
         self.aber_vbox.addWidget(self.A1_amp_label)
 
         self.A1_amp_input = QtWidgets.QLineEdit(self.aber_vbox_widget)
-        self.A1_amp_input.setText(str(0.0))
-        self.A1_amp_input.setObjectName('A1_amp_input')
+        self.A1_amp_input.setText(str(AberFitterWin.init_params['A1_amp'] * 1e9))
         self.aber_vbox.addWidget(self.A1_amp_input)
 
         self.A1_phs_label = QtWidgets.QLabel('A1 angle [deg]', self.aber_vbox_widget)
-        self.A1_phs_label.setObjectName('A1_phs_label')
         self.aber_vbox.addWidget(self.A1_phs_label)
 
         self.A1_phs_input = QtWidgets.QLineEdit(self.aber_vbox_widget)
-        self.A1_phs_input.setText(str(0.0))
-        self.A1_phs_input.setObjectName('A1_phs_input')
+        self.A1_phs_input.setText(str(AberFitterWin.init_params['A1_phs']))
         self.aber_vbox.addWidget(self.A1_phs_input)
 
         self.Cs_label = QtWidgets.QLabel('Cs [mm]', self.aber_vbox_widget)
-        self.Cs_label.setObjectName('Cs_label')
         self.aber_vbox.addWidget(self.Cs_label)
 
         self.Cs_input = QtWidgets.QLineEdit(self.aber_vbox_widget)
-        self.Cs_input.setText(str(0.0))
-        self.Cs_input.setObjectName('Cs_input')
+        self.Cs_input.setText(str(AberFitterWin.init_params['Cs'] * 1e3))
         self.aber_vbox.addWidget(self.Cs_input)
 
         self.df_spread_label = QtWidgets.QLabel('Defocus spread [nm]', self.aber_vbox_widget)
-        self.df_spread_label.setObjectName('df_spread_label')
         self.aber_vbox.addWidget(self.df_spread_label)
 
         self.df_spread_input = QtWidgets.QLineEdit(self.aber_vbox_widget)
-        self.df_spread_input.setText(str(0.0))
-        self.df_spread_input.setObjectName('df_spread_input')
+        self.df_spread_input.setText(str(AberFitterWin.init_params['df_spread'] * 1e9))
         self.aber_vbox.addWidget(self.df_spread_input)
 
         self.conv_angle_label = QtWidgets.QLabel('Conv. angle [mrad]', self.aber_vbox_widget)
-        self.conv_angle_label.setObjectName('conv_angle_label')
         self.aber_vbox.addWidget(self.conv_angle_label)
 
         self.conv_angle_input = QtWidgets.QLineEdit(self.aber_vbox_widget)
-        self.conv_angle_input.setText(str(0.0))
-        self.conv_angle_input.setObjectName('conv_angle_input')
+        self.conv_angle_input.setText(str(AberFitterWin.init_params['conv_angle'] * 1e3))
         self.aber_vbox.addWidget(self.conv_angle_input)
 
         self.aperture_label = QtWidgets.QLabel('Aperture [px]', self.aber_vbox_widget)
-        self.aperture_label.setObjectName('aperture_label')
         self.aber_vbox.addWidget(self.aperture_label)
 
         self.aperture_input = QtWidgets.QLineEdit(self.aber_vbox_widget)
-        self.aperture_input.setText(str(0))
+        self.aperture_input.setText(str(AberFitterWin.init_params['aperture']))
         self.aber_vbox.addWidget(self.aperture_input)
 
         self.threshold_label = QtWidgets.QLabel('Ring width [au]', self.aber_vbox_widget)
-        self.threshold_label.setObjectName('threshold_label')
         self.aber_vbox.addWidget(self.threshold_label)
 
         self.threshold_input = QtWidgets.QLineEdit(self.aber_vbox_widget)
-        self.threshold_input.setText(str(0.01))
+        self.threshold_input.setText(str(AberFitterWin.init_params['ring_width']))
         self.aber_vbox.addWidget(self.threshold_input)
 
         self.aber_vbox.addStretch(1)
@@ -280,26 +279,12 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
         log_hbox.addWidget(self.log_button)
         self.aber_vbox.addLayout(log_hbox)
 
-        # ----- CTF overlay -----
-
-        self.update_aberrs()
-        ctf_data = ctf_calc.calc_ctf_2d_dev(img.width, img.px_dim, self.aberrs)
-        pctf_data = ctf_data.get_ctf_sine()
-        thon_rings = get_Thon_rings(pctf_data, ap=int(self.aperture_input.text()), threshold=float(self.threshold_input.text()))
-        pctf_img = imsup.ImageWithBuffer(pctf_data.shape[0], pctf_data.shape[1])
-        pctf_img.LoadAmpData(thon_rings)
-
-        self.ctf_view = GraphicsLabel(self, pctf_img, mzt=True)
-        # self.ctf_view.setGeometry(QtCore.QRect(20, 10, const.ccWidgetDim, const.ccWidgetDim))
-        self.ctf_view.setGeometry(self.img_view.geometry())
-        self.ctf_view.opacity.setOpacity(0.7)
-
         self.img_view.show()
         self.ctf_view.show()
         self.nav_hbox_widget.show()
         self.aber_vbox_widget.show()
 
-        self.setCentralWidget(self.centralwidget)
+        self.setCentralWidget(self.central_widget)
         self.menubar = QtWidgets.QMenuBar(self)
         self.menubar.setGeometry(QtCore.QRect(0, 0, 750, 21))
         self.setMenuBar(self.menubar)
@@ -310,6 +295,13 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
         self.setWindowTitle('Aberration fitter')
         QtCore.QMetaObject.connectSlotsByName(self)
         self.show()
+
+    def init_aberrs(self):
+        self.aberrs.set_C1(AberFitterWin.init_params['C1'])
+        self.aberrs.set_A1(AberFitterWin.init_params['A1_amp'], AberFitterWin.init_params['A1_phs'])
+        self.aberrs.set_Cs(AberFitterWin.init_params['Cs'])
+        self.aberrs.set_df_spread(AberFitterWin.init_params['df_spread'])
+        self.aberrs.set_conv_angle(AberFitterWin.init_params['conv_angle'])
 
     def update_aberrs(self):
         self.aberrs.set_C1(float(self.df_input.text()) * 1e-9)
@@ -326,10 +318,15 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
         self.ctf_view.image_to_disp = np.copy(thon_rings)
         self.ctf_view.repaint_pixmap()
 
-    # def update_rings(self):
-    #     ctf = ctf_calc.calc_ctf_2d_dev(self.img_view.image.width, self.img_view.image.px_dim, self.aberrs)
-    #     self.rings = [ create_Thon_ring_from_pctf_zeros(ctf, i) for i in range(1, self.n_rings_edit.value() + 1) ]
-    #     self.img_view.update()
+    def prev_image(self):
+        if self.img_view.image.prev is not None:
+            self.img_view.set_new_image(self.img_view.image.prev)
+            self.img_view.repaint_pixmap()
+
+    def next_image(self):
+        if self.img_view.image.next is not None:
+            self.img_view.set_new_image(self.img_view.image.next)
+            self.img_view.repaint_pixmap()
 
 # -------------------------------------------------------------------
 
@@ -359,6 +356,11 @@ class GraphicsLabel(QtWidgets.QLabel):
 
         self.repaint_pixmap()
         self.view.show()
+
+    def set_new_image(self, image):
+        self.image = image
+        self.scaled_image = ctf_calc.scale_image(self.image.buffer, np.min(self.image.buffer), np.max(self.image.buffer))
+        self.image_to_disp = np.copy(self.scaled_image)
 
     def repaint_pixmap(self):
         # self.image.UpdateImageFromBuffer()
@@ -433,10 +435,50 @@ class GraphicsLabel(QtWidgets.QLabel):
 
 # -------------------------------------------------------------------
 
+def r_replace(text, old, new, occurence):
+    rest = text.rsplit(old, occurence)
+    return new.join(rest)
+
+# -------------------------------------------------------------------
+
+def load_image_series_from_first_file(img_path):
+    img_list = imsup.ImageList()
+    img_num_match = re.search('([0-9]+).dm3', img_path)
+    img_num_text = img_num_match.group(1)
+    img_num = int(img_num_text)
+
+    while path.isfile(img_path):
+        print('Reading file "' + img_path + '"')
+        img_data, px_dims = dm3.ReadDm3File(img_path)
+        h, w = img_data.shape
+        imsup.Image.px_dim_default = px_dims[0]
+
+        fft = np.fft.fft2(img_data)
+        fft_amp, fft_phs = ab.complex2polar(fft)
+        diff_amp = sim.fft2diff(fft_amp)
+        diff_amp = np.log10(diff_amp)
+
+        img = imsup.ImageWithBuffer(h, w, imsup.Image.cmp['CAP'], imsup.Image.mem['CPU'],
+                                    num=img_num, px_dim_sz=px_dims[0])
+        img.LoadAmpData(diff_amp)
+        img_list.append(img)
+
+        img_num += 1
+        img_num_text_new = img_num_text.replace(str(img_num-1), str(img_num))
+        if img_num == 10:
+            img_num_text_new = img_num_text_new[1:]
+        img_path = r_replace(img_path, img_num_text, img_num_text_new, 1)
+        img_num_text = img_num_text_new
+
+    img_list.UpdateLinks()
+    return img_list[0]
+
+# -------------------------------------------------------------------
+
 def run_aberr_window():
     import sys
     app = QtWidgets.QApplication(sys.argv)
-    aberr_win = Ui_MainWindow(app)
+    aberr_win = AberFitterWin(app)
     sys.exit(app.exec_())
 
 run_aberr_window()

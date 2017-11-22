@@ -135,96 +135,113 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
         img = imsup.ImageWithBuffer(img_data.shape[0], img_data.shape[1], imsup.Image.cmp['CAP'], imsup.Image.mem['CPU'], px_dim_sz=px_dims[0])
         img.LoadAmpData(diff_amp)
 
+
+        # ----- Image view -----
+
         self.img_view = GraphicsLabel(self, img)
         self.img_view.setGeometry(QtCore.QRect(20, 10, const.ccWidgetDim, const.ccWidgetDim))
-        self.img_view.setObjectName('img_view')
 
-        self.verticalLayoutWidget = QtWidgets.QWidget(self.centralwidget)
-        self.verticalLayoutWidget.setGeometry(QtCore.QRect(560, 10, 160, 600))
-        self.verticalLayoutWidget.setObjectName('verticalLayoutWidget')
-        self.verticalLayout = QtWidgets.QVBoxLayout(self.verticalLayoutWidget)
-        self.verticalLayout.setObjectName('verticalLayout')
+        # ----- Horizontal layout 1 (navigation) -----
 
-        self.df_label = QtWidgets.QLabel('Defocus [nm]', self.verticalLayoutWidget)
+        self.nav_hbox_widget = QtWidgets.QWidget(self.centralwidget)
+        self.nav_hbox_widget.setGeometry(QtCore.QRect(20, 520, 512, 50))
+
+        self.prev_button = QtWidgets.QPushButton(QtGui.QIcon('gui/prev.png'), '', self.nav_hbox_widget)
+        # self.prev_button.clicked.connect(self.prev_image)
+
+        self.next_button = QtWidgets.QPushButton(QtGui.QIcon('gui/next.png'), '', self.nav_hbox_widget)
+        # self.next_button.clicked.connect(self.next_image)
+
+        self.nav_hbox = QtWidgets.QHBoxLayout(self.nav_hbox_widget)
+        self.nav_hbox.addWidget(self.prev_button)
+        self.nav_hbox.addWidget(self.next_button)
+
+        # ----- Vertical layout 1 (aberrations) -----
+
+        self.aber_vbox_widget = QtWidgets.QWidget(self.centralwidget)
+        self.aber_vbox_widget.setGeometry(QtCore.QRect(560, 10, 160, 600))
+        self.aber_vbox = QtWidgets.QVBoxLayout(self.aber_vbox_widget)
+
+        self.df_label = QtWidgets.QLabel('Defocus [nm]', self.aber_vbox_widget)
         self.df_label.setEnabled(True)
         self.df_label.setObjectName('df_label')
-        self.verticalLayout.addWidget(self.df_label)
+        self.aber_vbox.addWidget(self.df_label)
 
-        self.df_input = QtWidgets.QLineEdit(self.verticalLayoutWidget)
+        self.df_input = QtWidgets.QLineEdit(self.aber_vbox_widget)
         self.df_input.setText(str(40.0))
         self.df_input.setObjectName('df_input')
-        self.verticalLayout.addWidget(self.df_input)
+        self.aber_vbox.addWidget(self.df_input)
 
-        self.A1_amp_label = QtWidgets.QLabel('A1 amplitude [nm]', self.verticalLayoutWidget)
+        self.A1_amp_label = QtWidgets.QLabel('A1 amplitude [nm]', self.aber_vbox_widget)
         self.A1_amp_label.setObjectName('A1_amp_label')
-        self.verticalLayout.addWidget(self.A1_amp_label)
+        self.aber_vbox.addWidget(self.A1_amp_label)
 
-        self.A1_amp_input = QtWidgets.QLineEdit(self.verticalLayoutWidget)
+        self.A1_amp_input = QtWidgets.QLineEdit(self.aber_vbox_widget)
         self.A1_amp_input.setText(str(0.0))
         self.A1_amp_input.setObjectName('A1_amp_input')
-        self.verticalLayout.addWidget(self.A1_amp_input)
+        self.aber_vbox.addWidget(self.A1_amp_input)
 
-        self.A1_phs_label = QtWidgets.QLabel('A1 angle [deg]', self.verticalLayoutWidget)
+        self.A1_phs_label = QtWidgets.QLabel('A1 angle [deg]', self.aber_vbox_widget)
         self.A1_phs_label.setObjectName('A1_phs_label')
-        self.verticalLayout.addWidget(self.A1_phs_label)
+        self.aber_vbox.addWidget(self.A1_phs_label)
 
-        self.A1_phs_input = QtWidgets.QLineEdit(self.verticalLayoutWidget)
+        self.A1_phs_input = QtWidgets.QLineEdit(self.aber_vbox_widget)
         self.A1_phs_input.setText(str(0.0))
         self.A1_phs_input.setObjectName('A1_phs_input')
-        self.verticalLayout.addWidget(self.A1_phs_input)
+        self.aber_vbox.addWidget(self.A1_phs_input)
 
-        self.Cs_label = QtWidgets.QLabel('Cs [mm]', self.verticalLayoutWidget)
+        self.Cs_label = QtWidgets.QLabel('Cs [mm]', self.aber_vbox_widget)
         self.Cs_label.setObjectName('Cs_label')
-        self.verticalLayout.addWidget(self.Cs_label)
+        self.aber_vbox.addWidget(self.Cs_label)
 
-        self.Cs_input = QtWidgets.QLineEdit(self.verticalLayoutWidget)
+        self.Cs_input = QtWidgets.QLineEdit(self.aber_vbox_widget)
         self.Cs_input.setText(str(0.0))
         self.Cs_input.setObjectName('Cs_input')
-        self.verticalLayout.addWidget(self.Cs_input)
+        self.aber_vbox.addWidget(self.Cs_input)
 
-        self.df_spread_label = QtWidgets.QLabel('Defocus spread [nm]', self.verticalLayoutWidget)
+        self.df_spread_label = QtWidgets.QLabel('Defocus spread [nm]', self.aber_vbox_widget)
         self.df_spread_label.setObjectName('df_spread_label')
-        self.verticalLayout.addWidget(self.df_spread_label)
+        self.aber_vbox.addWidget(self.df_spread_label)
 
-        self.df_spread_input = QtWidgets.QLineEdit(self.verticalLayoutWidget)
+        self.df_spread_input = QtWidgets.QLineEdit(self.aber_vbox_widget)
         self.df_spread_input.setText(str(0.0))
         self.df_spread_input.setObjectName('df_spread_input')
-        self.verticalLayout.addWidget(self.df_spread_input)
+        self.aber_vbox.addWidget(self.df_spread_input)
 
-        self.conv_angle_label = QtWidgets.QLabel('Conv. angle [mrad]', self.verticalLayoutWidget)
+        self.conv_angle_label = QtWidgets.QLabel('Conv. angle [mrad]', self.aber_vbox_widget)
         self.conv_angle_label.setObjectName('conv_angle_label')
-        self.verticalLayout.addWidget(self.conv_angle_label)
+        self.aber_vbox.addWidget(self.conv_angle_label)
 
-        self.conv_angle_input = QtWidgets.QLineEdit(self.verticalLayoutWidget)
+        self.conv_angle_input = QtWidgets.QLineEdit(self.aber_vbox_widget)
         self.conv_angle_input.setText(str(0.0))
         self.conv_angle_input.setObjectName('conv_angle_input')
-        self.verticalLayout.addWidget(self.conv_angle_input)
+        self.aber_vbox.addWidget(self.conv_angle_input)
 
-        self.aperture_label = QtWidgets.QLabel('Aperture [px]', self.verticalLayoutWidget)
+        self.aperture_label = QtWidgets.QLabel('Aperture [px]', self.aber_vbox_widget)
         self.aperture_label.setObjectName('aperture_label')
-        self.verticalLayout.addWidget(self.aperture_label)
+        self.aber_vbox.addWidget(self.aperture_label)
 
-        self.aperture_input = QtWidgets.QLineEdit(self.verticalLayoutWidget)
+        self.aperture_input = QtWidgets.QLineEdit(self.aber_vbox_widget)
         self.aperture_input.setText(str(0))
-        self.verticalLayout.addWidget(self.aperture_input)
+        self.aber_vbox.addWidget(self.aperture_input)
 
-        self.threshold_label = QtWidgets.QLabel('Ring width [au]', self.verticalLayoutWidget)
+        self.threshold_label = QtWidgets.QLabel('Ring width [au]', self.aber_vbox_widget)
         self.threshold_label.setObjectName('threshold_label')
-        self.verticalLayout.addWidget(self.threshold_label)
+        self.aber_vbox.addWidget(self.threshold_label)
 
-        self.threshold_input = QtWidgets.QLineEdit(self.verticalLayoutWidget)
+        self.threshold_input = QtWidgets.QLineEdit(self.aber_vbox_widget)
         self.threshold_input.setText(str(0.01))
-        self.verticalLayout.addWidget(self.threshold_input)
+        self.aber_vbox.addWidget(self.threshold_input)
 
-        self.verticalLayout.addStretch(1)
+        self.aber_vbox.addStretch(1)
 
-        self.update_button = QtWidgets.QPushButton('Update', self.verticalLayoutWidget)
+        self.update_button = QtWidgets.QPushButton('Update', self.aber_vbox_widget)
         self.update_button.clicked.connect(self.update_rings)
-        self.verticalLayout.addWidget(self.update_button)
+        self.aber_vbox.addWidget(self.update_button)
 
-        self.bright_label = QtWidgets.QLabel('Brightness', self.verticalLayoutWidget)
-        self.cont_label = QtWidgets.QLabel('Contrast', self.verticalLayoutWidget)
-        self.gamma_label = QtWidgets.QLabel('Gamma', self.verticalLayoutWidget)
+        self.bright_label = QtWidgets.QLabel('Brightness', self.aber_vbox_widget)
+        self.cont_label = QtWidgets.QLabel('Contrast', self.aber_vbox_widget)
+        self.gamma_label = QtWidgets.QLabel('Gamma', self.aber_vbox_widget)
 
         self.bright_slider = QtWidgets.QSlider(QtCore.Qt.Horizontal)
         self.bright_slider.setFixedHeight(14)
@@ -245,23 +262,25 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
         self.cont_slider.valueChanged.connect(self.img_view.correct_image)
         self.gamma_slider.valueChanged.connect(self.img_view.correct_image)
 
-        self.verticalLayout.addWidget(self.bright_label)
-        self.verticalLayout.addWidget(self.bright_slider)
-        self.verticalLayout.addWidget(self.cont_label)
-        self.verticalLayout.addWidget(self.cont_slider)
-        self.verticalLayout.addWidget(self.gamma_label)
-        self.verticalLayout.addWidget(self.gamma_slider)
+        self.aber_vbox.addWidget(self.bright_label)
+        self.aber_vbox.addWidget(self.bright_slider)
+        self.aber_vbox.addWidget(self.cont_label)
+        self.aber_vbox.addWidget(self.cont_slider)
+        self.aber_vbox.addWidget(self.gamma_label)
+        self.aber_vbox.addWidget(self.gamma_slider)
 
-        log_box = QtWidgets.QHBoxLayout(self.verticalLayoutWidget)
-        self.log_label = QtWidgets.QLabel('Log.')
-        self.log_input = QtWidgets.QLineEdit(self.verticalLayoutWidget)
+        log_hbox = QtWidgets.QHBoxLayout(self.aber_vbox_widget)
+        self.log_label = QtWidgets.QLabel('Log.', self.aber_vbox_widget)
+        self.log_input = QtWidgets.QLineEdit(self.aber_vbox_widget)
         self.log_input.setText(str(-1))
-        self.log_button = QtWidgets.QPushButton('OK')
+        self.log_button = QtWidgets.QPushButton('OK', self.aber_vbox_widget)
         self.log_button.clicked.connect(self.img_view.set_log_base)
-        log_box.addWidget(self.log_label)
-        log_box.addWidget(self.log_input)
-        log_box.addWidget(self.log_button)
-        self.verticalLayout.addLayout(log_box)
+        log_hbox.addWidget(self.log_label)
+        log_hbox.addWidget(self.log_input)
+        log_hbox.addWidget(self.log_button)
+        self.aber_vbox.addLayout(log_hbox)
+
+        # ----- CTF overlay -----
 
         self.update_aberrs()
         ctf_data = ctf_calc.calc_ctf_2d_dev(img.width, img.px_dim, self.aberrs)
@@ -271,21 +290,20 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
         pctf_img.LoadAmpData(thon_rings)
 
         self.ctf_view = GraphicsLabel(self, pctf_img, mzt=True)
-        self.ctf_view.setGeometry(QtCore.QRect(20, 10, const.ccWidgetDim, const.ccWidgetDim))
-        self.ctf_view.setObjectName('ctf_view')
+        # self.ctf_view.setGeometry(QtCore.QRect(20, 10, const.ccWidgetDim, const.ccWidgetDim))
+        self.ctf_view.setGeometry(self.img_view.geometry())
         self.ctf_view.opacity.setOpacity(0.7)
 
         self.img_view.show()
         self.ctf_view.show()
-        self.verticalLayoutWidget.show()
+        self.nav_hbox_widget.show()
+        self.aber_vbox_widget.show()
 
         self.setCentralWidget(self.centralwidget)
         self.menubar = QtWidgets.QMenuBar(self)
         self.menubar.setGeometry(QtCore.QRect(0, 0, 750, 21))
-        self.menubar.setObjectName('menubar')
         self.setMenuBar(self.menubar)
         self.statusbar = QtWidgets.QStatusBar(self)
-        self.statusbar.setObjectName('statusbar')
         self.setStatusBar(self.statusbar)
 
         self.statusbar.showMessage('Ready')
